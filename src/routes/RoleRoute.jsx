@@ -9,14 +9,14 @@ export default function RoleRoute({ allowedRoles }) {
 
   if (!user) {
     // não está logado
-    return <Navigate to="/" replace />;
+    // return <Navigate to="/" replace />;
   }
 
   if (!allowedRoles.includes(Number(user.occupation))) {
     // não tem permissão
     console.log(user.occupation, "ocupação")
     console.log(allowedRoles,"roles")
-    return <Navigate to="/" replace />;
+    // return <Navigate to="/" replace />;
   }
 
   return <Outlet />; // renderiza as rotas filhas

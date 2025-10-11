@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import Sidebar from "../components/Sidebar";
-import ProjectForm from "../components/ProjectForm";
-import ProjectList from "../components/ProjectList";
-import CreateService from "../components/CreateService";
-import RegisterEmployee from "../components/RegisterEmployee";
-import CreateOccupation from "../components/CreateOccupation";
-import CreateOs from "../components/CreateOs";
-import GetOss from "../components/GetOSs";
-import MyService from "../components/MyService";
+import Sidebar from "../../components/Sidebar";
+import ProjectForm from "../../components/ProjectForm";
+import ProjectList from "../../components/ProjectList";
+import CreateService from "../../components/CreateService";
+import RegisterEmployee from "../../components/RegisterEmployee";
+import CreateOccupation from "../../components/CreateOccupation";
+import CreateOs from "../../components/CreateOs";
+import GetOss from "../../components/GetOSs";
+import MyService from "../../components/MyService";
 
-import RdoPdf from "../components/RdoForms/RdoPdf";
+import RdoPdf from "../../components/RdoForms/RdoPdf";
 
-import PowerBIContainer from "../components/dashboard/PowerBIContainer";
-import Login from "./Login";
-import { FormWrapper, InputWraper, SubmitButton } from "../layouts/Theme";
+import PowerBIContainer from "../../components/dashboard/PowerBIContainer";
+import Login from "../Login";
+import { FormWrapper, InputWraper, SubmitButton } from "../../layouts/Theme";
 import { useNavigate } from "react-router-dom";
 
 // import Projects from "../components/Projects";
@@ -40,9 +40,9 @@ const Main = styled.main`
 
 
 
-export default function HomeCopy() {
+export default function Engenheiro() {
 
-  const navigate = useNavigate()
+    const navigate = useNavigate()
   // const [projects, setProjects] = useState([]);
 
   // useEffect(() => {
@@ -57,11 +57,12 @@ export default function HomeCopy() {
   return (
     <Container>
       <Main>
-      <SubmitButton onClick={() => navigate("/planner")}>Planner</SubmitButton>
-      <SubmitButton onClick={() => navigate("/tecnico")}>Técnico</SubmitButton>
-      <SubmitButton onClick={() => navigate("/engenheiro")}>Engenheiro</SubmitButton>
-      <SubmitButton onClick={() => navigate("/rh")}>RH</SubmitButton>
-          {/* <p className="mt-4">Cargo selecionado: {role}</p> */}
+      <SubmitButton onClick={() => navigate("/clientes")}>Cadastrar Cliente</SubmitButton>
+      <SubmitButton onClick={() => navigate("/home")}>Dashboard</SubmitButton>
+            <SubmitButton onClick={() => navigate("/servicos")}>Serviços</SubmitButton>
+                        <SubmitButton onClick={() => navigate("/ordens")}>Serviços</SubmitButton>
+            
+
 </Main>
        {/* <Sidebar /> */}
       {/* <Main> */}

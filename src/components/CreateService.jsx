@@ -32,32 +32,6 @@ export default function CreateService() {
 
   const selectedOptionService = watch("selectedOptionService");
 
-  // useEffect(() => {
-  //   const fetchClients = async () => {
-  //     try {
-  //       const data = await contract.getContracts();
-  //       setProjects(data);
-  //     } catch (error) {
-  //       console.error("Erro ao buscar contratos:", error);
-  //     }
-  //   };
-  //   fetchClients();
-  // }, []);
-
-
-  // useEffect(() => {
-  //   const fetchOccupation = async () => {
-  //     try {
-  //       const data = await occupation.getOccupation();
-  //       setOccupations(data);
-  //     } catch (error) {
-  //       console.error("Erro ao buscar contratos:", error);
-  //     }
-  //   };
-  //   fetchOccupation();
-  // }, []);
-
-
 
   useEffect(() => {
     const fetchClients = async () => {

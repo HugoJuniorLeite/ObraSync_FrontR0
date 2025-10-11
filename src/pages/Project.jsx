@@ -72,12 +72,9 @@ export default function Project() {
     }
   }
 
-
   const handleFilterChange = (filter) => {
     console.log("Filtro ativo:", filter);
   };
-
-
 
   return (
 

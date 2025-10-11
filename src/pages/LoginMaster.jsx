@@ -7,7 +7,7 @@ import TokenVerification from "../components/TokenVerification";
 import { Input } from "../components/Ui/Input";
 import logo from '../assets/logo.png'
 import { useNavigate } from "react-router-dom";
-import { LoginMasterSchema } from "../schemas/LoginMasterSchema.jxs";
+import { LoginMasterSchema } from "../schemas/LoginMasterSchema";
 
 export default function LoginMaster() {
   const [istoken, setIstoken] = useState(false);
@@ -39,41 +39,6 @@ const navigate = useNavigate();
     }
   };
 
-// const handleTokenSubmit = async (cod) => {
-//   setIstoken(false)
-//   try {
-//     await validateToken({ email, token_access: cod }); // ✅ envia email + token
-//     alert("Token validado com sucesso!");
-//   } catch (err) {
-//     console.error(err);
-//     alert("Código inválido.");
-//   }
-// };
-  // const handleTokenSubmit = async (cod) => {
-
-
-  //     setIstoken(false)
-  //   try {
-  //     await validateToken(cod);
-  //     alert("Token validado com sucesso!");
-  
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Código inválido.");
-  //   }
-  // };
-
-
-// const handleTokenSubmit = async (cod) => {
-//   setIstoken(false)
-//   try {
-//     await validateToken({ email, token_access: cod }); // ✅ envia email + token
-//     alert("Token validado com sucesso!");
-//   } catch (err) {
-//     console.error(err);
-//     alert("Código inválido.");
-//   }
-// };
 
 const handleTokenSubmit = async (cod) => {
   setIstoken(false) ;

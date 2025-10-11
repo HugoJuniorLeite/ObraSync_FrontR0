@@ -87,41 +87,6 @@ export const FormProvider = ({ children }) => {
     }));
   };
 
-  // 🔹 Campo de arquivo (foto etc.)
-  // const handleFileChangeField = (field) => (file) => {
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     [field]: URL.createObjectURL(file),
-  //   }));
-  // };
-
-  // const handleFileChangeField = async (e) => {
-  //   const file = e.target.files[0];
-  //   if (!file || !formData?.id) return;
-
-  //   const key = `foto_rdo_${formData.id}`;
-  //   await set(key, file);
-
-  //   setFormData(prev => ({ ...prev, fotoKey: key }));
-  // };
-
-
-  // 🔹 Campo de arquivo (foto etc.)
-  // const handleFileChangeField = (field) => async (file) => {
-  //   if (!file || !formData?.id) return;
-
-  //   const key = `rdo-${formData.id}-${field}`;
-  //   await set(key, file);
-
-  //   const url = URL.createObjectURL(file);
-
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     [field]: url,   // URL para exibir a imagem no preview
-  //     [`${field}Key`]: key, // chave para recuperar do IndexedDB
-  //   }));
-  // };
-
 
   const handleFileChangeField = (formData, setFormData) => (field) => async (file) => {
     if (!file || !formData?.id) return;

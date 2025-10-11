@@ -10,7 +10,6 @@ import { croquisMap } from "../../data/croquisMap";
 import JSZip from "jszip";
 import { set, get } from "idb-keyval";
 import createRdo from "../../services/apiRdo";
-// import compressImage from "./compressImage"; // sua função de compressão
 import html2canvas from "html2canvas";
 import generateCroquiPDF from "../generateCroquiPDF";
 
@@ -180,34 +179,6 @@ const navigate =useNavigate()
   const handleNext = () => { if (step < steps.length - 1) setStep(step + 1); };
   const handlePrev = () => { if (step > 0) setStep(step - 1); };
 
-
-
-// const croquiRef = useRef(null);
-
-// // no JSX
-// <div ref={croquiRef}>
-//   {/* campos do croqui */}
-// </div>
-
-// ao capturar
-// function captureCroqui() {
-//   if (!croquiRef.current) throw new Error("Croqui não encontrado no DOM");
-
-//   return new Promise((resolve, reject) => {
-//     html2canvas(croquiRef.current)
-//       .then(canvas => {
-//         canvas.toBlob(blob => {
-//           if (blob) resolve(blob);
-//           else reject(new Error("Falha ao gerar blob"));
-//         }, "image/png");
-//       })
-//       .catch(err => reject(err));
-//   });
-// }
-
-// No início do componente, após os hooks useState/useEffect
-
-
   const getCroquiKey = (localCorte, tipoRamal, ramalCortado) => {
     if (!localCorte || !tipoRamal) return "principal_geral"; // fallback
 
@@ -247,13 +218,6 @@ const croquiData = croquisMap[croquiKey] || croquisMap["principal_geral"];
 
 
   const handleSubmit = async () => {
- 
-
-    // if (!croquiRef.current) return alert("Croqui não encontrado");
-
-
-    // const formDataEnvio = new FormData();
-    // formDataEnvio.append("data", JSON.stringify(rdoJson));
 
 
     try {
@@ -371,11 +335,6 @@ const croquiData = croquisMap[croquiKey] || croquisMap["principal_geral"];
       formDataEnvio.append("data", JSON.stringify(rdoJson));
 
 
-      //print da tela
-// const croquiFile = await captureCroqui();
-// if (croquiFile) fotosCompactadas["fotoCroqui"] = croquiFile;
-
-
     console.log("🔹 Croqui file:", croquiData.file);
 
 
@@ -383,74 +342,6 @@ const croquiData = croquisMap[croquiKey] || croquisMap["principal_geral"];
       for (const [field, file] of Object.entries(fotosCompactadas)) {
         formDataEnvio.append(field, file); // ex: "fotoCalcadaAntes", file
       }
-
-// /print tela
-// const croquiBlob = await captureCroqui();
-
-
-//     async function captureCroquiTemp() {
-//       return new Promise((resolve, reject) => {
-//         const container = document.createElement("div");
-//     container.style.width = "600px";
-// container.style.height = "800px";
-//         document.body.appendChild(container);
-
-//         import("react-dom/client").then(ReactDOM => {
-//           const root = ReactDOM.createRoot(container);
-//           root.render(
-//             <PrincipalPreVgb
-//               croquiFields={croquiData.fields}
-//               croquiFile={croquiData.file}
-//               formData={formData}
-//               setFormData={() => {}}
-//               BillId={id}
-//               getCroquiKey={getCroquiKey}
-//             />
-//           );
-
-//           setTimeout(() => {
-//             html2canvas(container,{
-//                 scale: 1,
-//   useCORS: true,
-//   allowTaint: false,
-  
-//             })
-//               .then(canvas => {
-//                 canvas.toBlob(blob => {
-//                   document.body.removeChild(container);
-//                   if (blob) resolve(blob);
-//                   else reject(new Error("Falha ao gerar blob do croqui"));
-//                 }, "image/png");
-//               })
-//               .catch(err => {
-//                 document.body.removeChild(container);
-//                 reject(err);
-//               });
-//           }, 50); // espera React renderizar
-//         });
-//       });
-//     }
-    // formDataEnvio.append("fotoCroqui", croquiBlob, "croqui.png");
-
-    // const croquiBlob = await captureCroquiTemp();
-
-    
-    // formDataEnvio.append("fotoCroqui", croquiBlob, "croqui.png");
-    
-
-
-    //pdf 
-
-//     const croquiBlob = await generateCroquiPDF(croquiData, formData);
-// formDataEnvio.append("croquiPDF", croquiBlob, "croqui.pdf");
-    // console.log(croquiBlob, "Fotos para enviar"); // deve mostrar Blob
-    
-    
-    
-    // 👇 DEBUG (opcional): Verifique o que está sendo enviado
-      // for (let [key, value] of formDataEnvio.entries()) {
-      //   console.log(key, value instanceof File ? `${value.name} (${value.type})` : value);
-      // }
 
       // ✅ ENVIA PARA O BACKEND — SEM DEFINIR CONTENT-TYPE!
       const response = await createRdo.postRdo(formDataEnvio);

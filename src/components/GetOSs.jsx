@@ -162,14 +162,7 @@ export default function GetOss() {
           Despachar ({selectedBills.length})
         </DispatchButton>
       )} */}
-      <Input
-        type="date"
-        label="Data da programação"
-        name="programDate"
-        register={register}
-        error={errors.birthDate}
-          style={{ width: "150px" }}
-      />
+  
 
       <RowDespech>
 
@@ -196,6 +189,7 @@ export default function GetOss() {
 
         <StyledLabel >Ténico</StyledLabel>
         <Controller
+        
           name="selectedOptionTechnician"
           control={control}
           render={({ field: { onChange, ...rest } }) => (
@@ -207,7 +201,7 @@ export default function GetOss() {
               }}
               options={technicians?.map((srv) => ({ value: srv.employee.id, label: srv.employee.name }))}
               placeholder="Selecione o técnico..."
-              // isDisabled={!selectedOptionTechnician}
+              isDisabled={!selectedOptionProject}
               styles={customSelectStyles}
             />
           )}
@@ -215,12 +209,25 @@ export default function GetOss() {
 
 
 
-        <DispatchButton onClick={handleDispatch}>
+
+      </RowDespech>
+
+        <RowDespech>
+
+          <Input
+        type="date"
+        label="Data da programação"
+        name="programDate"
+        register={register}
+        error={errors.birthDate}
+          style={{ width: "150px" }}
+      />
+
+        <DispatchButton onClick={handleDispatch}
+          // isDisabled={!selectedOptionProject && !selectedOptionTechnician && !programDate}
+          >
           Despachar ({selectedBills.length})
         </DispatchButton>
-
-
-
       </RowDespech>
 
       <TableWrapper>
@@ -288,7 +295,6 @@ export default function GetOss() {
 
    {/* <RdoPdf/>  */}
 
-      {/* <MyService></MyService> */}
     </Container>
   );
 }

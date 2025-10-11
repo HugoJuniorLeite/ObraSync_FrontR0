@@ -52,10 +52,7 @@ export default function Home() {
   return (
     <Container>
 
-       {/* <Sidebar /> */}
       <Main>
-        {/* <ProjectForm /> 
-        <ProjectList projects={projects} />  */}
 
        {/* <Sidebar /> */}
       {/* <Main> */}
@@ -64,24 +61,12 @@ export default function Home() {
 
 
         <PowerBIContainer></PowerBIContainer>
+        {/* <Projects></Projects>  */}
+
 {/*
 
-
-
-          <CreateService></CreateService>
-
-
-       
-
-        <RegisterEmployee></RegisterEmployee>
-        <CreateOccupation></CreateOccupation>
-        <CreateOs></CreateOs>  
-
-
-        <GetOss></GetOss> 
 */}
 
-        {/* <Projects></Projects>  */}
 
 
          {/* <MyService></MyService> */}
