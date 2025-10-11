@@ -31,6 +31,7 @@
     "react-router-dom": "^7.7.1",
     "react-select": "^5.10.2",
     "styled-components": "^6.1.19",
+    "xlsx": "^0.18.5",
     "zod": "^4.0.14"
   },
   "devDependencies": {

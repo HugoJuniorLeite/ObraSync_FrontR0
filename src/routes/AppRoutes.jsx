@@ -36,8 +36,8 @@ import RdoFomrExtensionInative from "../components/RdoForms/RdoFomrExtensionInat
 import RdoPdf from "../components/RdoForms/RdoPdf";
 import PrincipalPreVgb from "../components/RdoForms/Croqui/PrincipalPreVgb";
 import UnderConstruction from "../pages/UnderConstruction";
-// import UnderConstruction from "../pages/UnderConstruction";
-// import NotFound from "../pages/NotFound"; // ✅ Crie se ainda não existir
+import EmployeeList from "../components/EmployeeList";
+
 
 // Estilo principal
 const Main = styled.main`
@@ -62,11 +62,11 @@ const roleRoutes = [
       { path: "/comercial/servicos/cadastrar", element: <CreateService /> },
       { path: "/comercial/servicos/listar", element: <UnderConstruction featureName="Listar Serviços" /> },
       // { path: "/ordens", element: <GetOss /> },
-      { path: "/configuracoes", element: <div>Configurações</div> },
-      { path: "/rh", element: <Rh /> },
-      { path: "/engenheiro", element: <Engenheiro /> },
-      { path: "/tecnico", element: <Tecnico /> },
-      { path: "/planner", element: <Planner /> },
+      // { path: "/configuracoes", element: <div>Configurações</div> },
+      // { path: "/rh", element: <Rh /> },
+      // { path: "/engenheiro", element: <Engenheiro /> },
+      // { path: "/tecnico", element: <Tecnico /> },
+      // { path: "/planner", element: <Planner /> },
       // { path: "/minhas-notas", element: <MyService /> },
       // { path: "/rdo-form/:id", element: <RdoFomrExtensionInative /> },
       // { path: "/rdo-croqui", element: <PrincipalPreVgb /> },
@@ -100,7 +100,7 @@ const roleRoutes = [
     allowedRoles: [6, 2, 4, 5],
     routes: [
       { path: "/funcionarios/cadastrar", element: <RegisterEmployee /> },
-      { path: "/funcionarios/listar", element: <UnderConstruction featureName="Listar Funcionários" /> },
+      { path: "/funcionarios/listar", element: <EmployeeList /> },
       { path: "/ocupacoes/cadastrar", element: <CreateOccupation /> },
       { path: "/ocupacoes/listar", element: <UnderConstruction featureName="Listar Ocupações" />},
 
