@@ -7,7 +7,7 @@ import { AuthContext } from "../contexts/AuthContext";
 import { menuItems } from "../routes/menuItems";
 
 const SidebarContainer = styled.aside`
-  width: ${(props) => (props.$isOpen ? "200px" : "70px")};
+  width: ${(props) => (props.$isOpen ? "200px" : "100px")};
   background-color: #1f1f1f;
   color: white;
   min-height: 100vh;

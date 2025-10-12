@@ -226,16 +226,16 @@ const ModalField = styled.p`
 `;
 
 // 🔹 Funções de formatação (reaproveitando)
-const formatDate = (value) => {
-  if (!value) return "—";
-  const d = new Date(value);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
+// const formatDate = (value) => {
+//   if (!value) return "—";
+//   const d = new Date(value);
+//   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+// };
 
-const formatCPF = (cpf) => cpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") ?? "—";
-const formatRG = (rg) => rg?.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4") ?? "—";
-const formatCEP = (cep) => cep?.replace(/(\d{5})(\d{3})/, "$1-$2") ?? "—";
-const formatBool = (value) => value ? "Sim" : "Não";
+// const formatCPF = (cpf) => cpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") ?? "—";
+// const formatRG = (rg) => rg?.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4") ?? "—";
+// const formatCEP = (cep) => cep?.replace(/(\d{5})(\d{3})/, "$1-$2") ?? "—";
+// const formatBool = (value) => value ? "Sim" : "Não";
 // Função para formatar um único telefone
 const formatPhone = (phone) => {
   if (!phone) return "—";

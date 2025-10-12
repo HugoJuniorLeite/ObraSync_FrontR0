@@ -90,6 +90,12 @@ const Field = styled.div`
     background: #1a2d45;
     color: white;
     width: 100%;
+    cursor: pointer;
+  }
+  label{
+    font-size:14px
+    /* display:flex; */
+    /* font-size:1rem; */
   }
 `;
 
@@ -117,7 +123,9 @@ const Button = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
-`;
+  `;
+import { useEffect } from "react";
+
 
 // ====== FUNÇÕES DE FORMATAÇÃO ======
 const formatDate = (value) => {
@@ -129,12 +137,12 @@ const formatDate = (value) => {
 const formatCPF = (cpf) => cpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") ?? "—";
 const formatRG = (rg) => rg?.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4") ?? "—";
 const formatCEP = (cep) => cep?.replace(/(\d{5})(\d{3})/, "$1-$2") ?? "—";
-const formatBool = (value) => value ? "Sim" : "Não";
+const formatBool = (value) => value === true ? "Sim" : "Não";
 const formatPhone = (phone) => {
   if (!phone) return "—";
   const digits = phone.replace(/\D/g, "");
-  if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits[2]} ${digits.slice(3,7)}-${digits.slice(7,11)}`;
-  if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6,10)}`;
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits[2]} ${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
   return phone;
 };
 const formatPhones = (phones) => {
@@ -147,9 +155,18 @@ const formatPhones = (phones) => {
 // ====== COMPONENTE ======
 export default function EmployeeModal({ employee, onUpdate, onClose }) {
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState(employee);
+  const [formData, setFormData] = useState({});
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+
+
+  useEffect(() => {
+    setFormData(employee);
+    setEditMode(false); // opcional: sempre volta para visualização ao reabrir
+  }, [employee]);
+
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -186,21 +203,21 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
         {/* Dados Pessoais */}
         <Section>
           <SectionTitle>Dados Pessoais</SectionTitle>
-          <Field>{editMode ? <input type="date" name="date_of_birth" value={formData.date_of_birth?.slice(0,10) || ""} onChange={handleChange} /> : <span>Data de Aniversário: {formatDate(employee.date_of_birth)}</span>}</Field>
-          <Field>{editMode ? <input name="rg" value={formData.rg || ""} onChange={handleChange} /> : <span>RG: {formatRG(employee.rg)}</span>}</Field>
-          <Field>{editMode ? <input name="cpf" value={formData.cpf || ""} onChange={handleChange} /> : <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
-          <Field>{editMode ? <input type="checkbox" name="drivers_license" checked={formData.drivers_license || false} onChange={handleChange} /> : <span>CNH: {formatBool(employee.drivers_license)}</span>}</Field>
+          <Field>{editMode ? <label>Data de Aniversário: <input type="date" name="date_of_birth" value={formData.date_of_birth?.slice(0, 10) || ""} onChange={handleChange} /> </label>: <span>Data de Aniversário: {formatDate(employee.date_of_birth)}</span>}</Field>
+          <Field>{editMode ? <label>RG: <input name="rg" value={formatRG(formData.rg) || ""} onChange={handleChange} /> </label>: <span>RG: {formatRG(employee.rg)}</span>}</Field>         
+          <Field>{editMode ? <label>CPF: <input name="cpf" value={formatCPF(formData.cpf) || ""} onChange={handleChange} /> </label>: <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
+          <Field>{editMode ? <label>CNH: <input type="checkbox" name="drivers_license" checked={formData.drivers_license || false} onChange={handleChange} /> </label>: <span>CNH: {formatBool(employee.drivers_license)}</span>}</Field>
         </Section>
 
         {/* Dados Corporativos */}
         <Section>
           <SectionTitle>Dados Corporativos</SectionTitle>
-          <Field>{editMode ? <input type="date" name="admission_date" value={formData.admission_date?.slice(0,10) || ""} onChange={handleChange} /> : <span>Data de Admissão: {formatDate(employee.admission_date)}</span>}</Field>
-          <Field>{editMode ? <input type="checkbox" name="active" checked={formData.active || false} onChange={handleChange} /> : <span>Ativo: {formatBool(employee.active)}</span>}</Field>
-          <Field>{editMode ? <input name="occupation_name" value={formData.occupation_name || ""} onChange={handleChange} /> : <span>Função: {employee.occupation_name}</span>}</Field>
-          <Field>{editMode ? <input name="description_occupation" value={formData.description_occupation || ""} onChange={handleChange} /> : <span>Descrição da Função: {employee.description_occupation}</span>}</Field>
-          <Field>{editMode ? <input type="number" name="salary" value={formData.salary || ""} onChange={handleChange} /> : <span>Salário: {employee.salary ? `R$ ${employee.salary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</span>}</Field>
-          <Field>{editMode ? <input type="checkbox" name="dangerousness" checked={formData.dangerousness || false} onChange={handleChange} /> : <span>Recebe Periculosidade: {formatBool(employee.dangerousness)}</span>}</Field>
+          <Field>{editMode ? <label>Data de Admissão: <input type="date" name="admission_date" value={formData.admission_date?.slice(0, 10) || ""} onChange={handleChange} /> </label>: <span>Data de Admissão: {formatDate(employee.admission_date)}</span>}</Field>
+          <Field>{editMode ? <label>Ativo: <input type="checkbox" name="active" checked={formData.active || false} onChange={handleChange} /> </label>:  <span>Ativo: {formatBool(employee.active)}</span>}</Field>
+          <Field>{editMode ? <label>Função: <input name="occupation_name" value={formData.occupation_name || ""} onChange={handleChange} /> </label>: <span>Função: {employee.occupation_name}</span>}</Field>
+          <Field>{editMode ? <label>Descrição da Função: <input name="description_occupation" value={formData.description_occupation || ""} onChange={handleChange} /> </label> : <span>Descrição da Função: {employee.description_occupation}</span>}</Field>
+          <Field>{editMode ? <label>Salário: <input type="number" name="salary" value={formData.salary || ""} onChange={handleChange} /> </label>: <span>Salário: {employee.salary ? `R$ ${employee.salary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</span>}</Field>
+          <Field>{editMode ? <label>Recebe Periculosidade: <input type="checkbox" name="dangerousness" checked={formData.dangerousness || false} onChange={handleChange} /> </label>: <span>Recebe Periculosidade: {formatBool(employee.dangerousness)}</span>}</Field>
         </Section>
 
         {/* Endereço */}
@@ -208,12 +225,13 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <SectionTitle>Endereço</SectionTitle>
           {editMode ? (
             <>
-              <Field><input name="street_name" value={formData.street_name || ""} onChange={handleChange} placeholder="Rua" /></Field>
-              <Field><input name="number_of_house" value={formData.number_of_house || ""} onChange={handleChange} placeholder="Número" /></Field>
-              <Field><input name="neighborhood" value={formData.neighborhood || ""} onChange={handleChange} placeholder="Bairro" /></Field>
-              <Field><input name="city" value={formData.city || ""} onChange={handleChange} placeholder="Cidade" /></Field>
-              <Field><input name="state" value={formData.state || ""} onChange={handleChange} placeholder="Estado" /></Field>
-              <Field><input name="zip_code" value={formData.zip_code || ""} onChange={handleChange} placeholder="CEP" /></Field>
+              <Field><label>Endereço: <input name="street_name" value={formData.street_name || ""} onChange={handleChange} placeholder="Rua" /></label></Field>
+              <Field><label>Numeral: <input name="number_of_house" value={formData.number_of_house || ""} onChange={handleChange} placeholder="Número" /></label></Field>
+              <Field><label>Bairro: <input name="neighborhood" value={formData.neighborhood || ""} onChange={handleChange} placeholder="Bairro" /></label></Field>
+              <Field><label>Cidade: <input name="city" value={formData.city || ""} onChange={handleChange} placeholder="Cidade" /></label></Field>
+              <Field><label>Estado: <input name="state" value={formData.state || ""} onChange={handleChange} placeholder="Estado" /></label></Field>
+              <Field><label>Cep: <input name="zip_code" value={formatCEP(formData.zip_code) || ""} onChange={handleChange} placeholder="CEP" /></label></Field>
+           
             </>
           ) : (
             <>
@@ -229,13 +247,19 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <SectionTitle>Contatos</SectionTitle>
           <Field>
             {editMode ? (
+              <label>Telefone: 
               <input
                 name="phones"
-                value={Array.isArray(formData.phones) ? formData.phones.map(p => p.phoneNumber).join(", ") : ""}
+                value={
+                  Array.isArray(formData.phones)
+                    ? formData.phones.map(p => formatPhone(p.phoneNumber)).join(", ")
+                    : ""
+                }
                 onChange={handleChange}
-                placeholder="Separe os números por vírgula"
+                placeholder="Digite o telefone"
+                maxLength={11}
               />
-            ) : (
+            </label>) : (
               <span>Telefones: {formatPhones(employee.phones)}</span>
             )}
           </Field>
@@ -250,6 +274,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
         )}
 
         {message && <p style={{ textAlign: "center", marginTop: "0.5rem" }}>{message}</p>}
+        
       </ModalContent>
     </ModalOverlay>
   );

@@ -40,7 +40,7 @@ export const Logo = styled.img`
 
 // Definindo container 
 export const FormWrapper = styled.div`
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
   padding: 40px 50px;
   background-color: ${colors.surface};

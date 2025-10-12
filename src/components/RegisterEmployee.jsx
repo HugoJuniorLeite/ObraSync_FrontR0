@@ -25,8 +25,6 @@ export default function RegisterEmployee() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
 
-
-
   const {
     control,
     register,
@@ -115,7 +113,6 @@ export default function RegisterEmployee() {
     setSelectedOptionProject(event.target.value);
   };
 
-
   const handleChangeOcupation = (event) => {
     setSelectedOptionOccupation(event.target.value);
   };
@@ -132,7 +129,7 @@ export default function RegisterEmployee() {
       date_of_birth: new Date(data.birthDate), // se tiver campo de data de nascimento
       rg: cleanRgNumber,
       cpf: cleanCpfNumber,
-      drivers_license: true, // você pode criar um campo booleano no form se quiser
+      drivers_license: data.driversLicense, // você pode criar um campo booleano no form se quiser
       occupation_id: Number(selectedOptionOccupation),
       admission_date: new Date(data.admissionDate),
       phones: {
