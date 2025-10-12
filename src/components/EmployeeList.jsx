@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { FileSpreadsheet, X, Loader } from "lucide-react";
 import * as XLSX from "xlsx";
 import employee from "../services/apiEmployee";
+import EmployeeModal from "./EmployeeModal";
 
 // 🔹 Estilos (mantive os seus originais)
 const Container = styled.div`
@@ -259,51 +260,9 @@ const formatPhones = (phones) => {
 };
 
 
-// 🔹 Funções de formatação
-// const formatField = (key, value) => {
-//   if (value === null || value === undefined) return "—";
-//   switch (key) {
-//     case "date_of_birth":
-//     case "admission_date":
-//       const d = new Date(value);
-//       return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-//     case "active":
-//     case "drivers_license":
-//     case "dangerousness":
-//       return value ? "Sim" : "Não";
-//     case "phones":
-//       if (Array.isArray(value)) return value.map(v => v.phoneNumber).join(", ");
-//       if (value?.phoneNumber) return value.phoneNumber;
-//       return "—";
-//     default:
-//       return value.toString();
-//   }
-// };
-
-const friendlyFieldName = (key) => ({
-  name: "Nome",
-  date_of_birth: "Data de Aniversário",
-  rg: "RG",
-  cpf: "CPF",
-  drivers_license: "CNH",
-  admission_date: "Data de Admissão",
-  active: "Ativo",
-  occupation_name: "Função",
-  description_occupation: "Descrição da Função",
-  dangerousness: "Recebe Periculosidade",
-  salary: "Salário",
-  zip_code: "CEP",
-  street_name: "Endereço",
-  number_of_house: "Número",
-  city: "Cidade",
-  state: "Estado",
-  neighborhood: "Bairro",
-  phones: "Telefones",
-  phone: "Telefone Principal",
-  statusText: "Status",
-}[key] || key.replace(/_/g, " "));
-
 // 🌐 Componente principal
+
+
 export default function EmployeeList({ projectId }) {
   const [employees, setEmployees] = useState([]);
   const [filter, setFilter] = useState("Todos");
@@ -313,26 +272,25 @@ export default function EmployeeList({ projectId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-
+  // Busca de funcionários
   useEffect(() => {
     setLoading(true);
-    const fetchClients = async () => {
+    const fetchEmployees = async () => {
       try {
-        const response = await employee.getEmployee(13);
-        const rawData = Array.isArray(response) ? response : [];
-        setEmployees(rawData);
+        const response = await employee.getEmployee(projectId || 13);
+        setEmployees(Array.isArray(response) ? response : []);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    fetchClients();
+    fetchEmployees();
   }, [projectId]);
 
-  // Filtro e busca
+  // Filtragem e busca
   const filtered = useMemo(() => {
-    return (employees || []).filter(emp => {
+    return employees.filter((emp) => {
       const name = emp?.name?.toLowerCase() || "";
       const status = emp?.active ? "Ativo" : "Inativo";
       const matchesFilter = filter === "Todos" || status === filter;
@@ -345,10 +303,12 @@ export default function EmployeeList({ projectId }) {
   const totalPages = Math.max(Math.ceil(filtered.length / itemsPerPage), 1);
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const totalAtivos = employees.filter(e => e.active).length;
-  const totalFerias = employees.filter(e => e.statusText === "Em Férias").length;
-  const totalInativos = employees.filter(e => !e.active).length;
+  // Totais
+  const totalAtivos = employees.filter((e) => e.active).length;
+  const totalFerias = employees.filter((e) => e.statusText === "Em Férias").length;
+  const totalInativos = employees.filter((e) => !e.active).length;
 
+  // Exportar Excel
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(filtered);
     const workbook = XLSX.utils.book_new();
@@ -356,6 +316,7 @@ export default function EmployeeList({ projectId }) {
     XLSX.writeFile(workbook, "Funcionarios_Projeto.xlsx");
   };
 
+  // Avatar color generator
   const getColorFromName = (name) => {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -386,10 +347,12 @@ export default function EmployeeList({ projectId }) {
         <button onClick={exportToExcel}><FileSpreadsheet size={18} /> Exportar</button>
       </SearchBar>
 
-      {loading ? <Spinner><Loader size={40} /></Spinner> : (
+      {loading ? (
+        <Spinner><Loader size={40} /></Spinner>
+      ) : (
         <>
           <Grid>
-            {paginated.map(emp => (
+            {paginated.map((emp) => (
               <Card key={emp.id} onClick={() => setSelectedEmployee(emp)}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <Avatar color={getColorFromName(emp.name)}>{emp.name.charAt(0).toUpperCase()}</Avatar>
@@ -410,56 +373,19 @@ export default function EmployeeList({ projectId }) {
         </>
       )}
 
-      {selectedEmployee && (
-        <ModalOverlay onClick={() => setSelectedEmployee(null)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            <CloseButton onClick={() => setSelectedEmployee(null)}><X size={20} /></CloseButton>
-            <h3 style={{ color: "#f59e0b", marginBottom: "1rem" }}>{selectedEmployee.name}</h3>
-
-            {/* Dados Pessoais */}
-            <ModalSection>
-              <ModalSectionTitle>Dados Pessoais</ModalSectionTitle>
-              <ModalField><strong>Data de Aniversário:</strong> {formatDate(selectedEmployee.date_of_birth)}</ModalField>
-              <ModalField><strong>RG:</strong> {formatRG(selectedEmployee.rg)}</ModalField>
-              <ModalField><strong>CPF:</strong> {formatCPF(selectedEmployee.cpf)}</ModalField>
-              <ModalField><strong>CNH:</strong> {formatBool(selectedEmployee.drivers_license)}</ModalField>
-
-            </ModalSection>
-
-
-            {/* Dados Corporativos */}
-            <ModalSection>
-              <ModalSectionTitle>Dados Corporativos</ModalSectionTitle>
-              <ModalField><strong>Data de Admissão:</strong> {formatDate(selectedEmployee.admission_date)}</ModalField>
-              <ModalField><strong>Ativo:</strong> {formatBool(selectedEmployee.active)}</ModalField>
-              <ModalField><strong>Função:</strong> {selectedEmployee.occupation_name}</ModalField>
-              <ModalField><strong>Descrição da Função:</strong> {selectedEmployee.description_occupation}</ModalField>
-              <ModalField><strong>Salário:</strong> {selectedEmployee.salary ? `R$ ${selectedEmployee.salary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</ModalField>
-              <ModalField><strong>Recebe Periculosidade:</strong> {formatBool(selectedEmployee.dangerousness)}</ModalField>
-            </ModalSection>
-
-            {/* Endereço */}
-            <ModalSection>
-              <ModalSectionTitle>Endereço</ModalSectionTitle>
-              <ModalField><strong>Endereço: {selectedEmployee.street_name}, {selectedEmployee.number_of_house}, {selectedEmployee.neighborhood}, {selectedEmployee.city}, {selectedEmployee.state}, {formatCEP(selectedEmployee.zip_code)}
-                </strong> 
-              </ModalField>
-              {/* <ModalField><strong>Número:</strong> {selectedEmployee.number_of_house}</ModalField>
-              <ModalField><strong>Bairro:</strong> {selectedEmployee.neighborhood}</ModalField>
-              <ModalField><strong>Cidade:</strong> {selectedEmployee.city}</ModalField>
-              <ModalField><strong>Estado:</strong> {selectedEmployee.state}</ModalField>
-              <ModalField><strong>CEP:</strong> {formatCEP(selectedEmployee.zip_code)}</ModalField> */}
-            </ModalSection>
-
-
-            {/* Contatos */}
-            <ModalSection>
-              <ModalSectionTitle>Contatos</ModalSectionTitle>
-              <ModalField><strong>Telefones:</strong> {formatPhones(selectedEmployee.phones)}</ModalField>
-            </ModalSection>
-          </ModalContent>
-        </ModalOverlay>
-      )}
+    {selectedEmployee && (
+  <EmployeeModal
+    employee={selectedEmployee}
+    onClose={() => setSelectedEmployee(null)}
+    onUpdate={(updated) => {
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === updated.id ? updated : e))
+      );
+      setSelectedEmployee(null);
+    }}
+  />
+)}
+     
     </Container>
   );
 }
