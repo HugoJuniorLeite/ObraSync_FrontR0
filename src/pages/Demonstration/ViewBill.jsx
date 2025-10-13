@@ -1,9 +1,9 @@
 
 
-export default function ViewBill(){
+// export default function ViewBill(){
 
-    return(
-        <>
-        <h1>teste</h1></>
-    )
-}
+//     return(
+//         <>
+//         <h1>teste</h1></>
+//     )
+// }

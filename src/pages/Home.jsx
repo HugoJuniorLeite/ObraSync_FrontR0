@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import Sidebar from "../components/Sidebar";
-import ProjectForm from "../components/ProjectForm";
-import ProjectList from "../components/ProjectList";
-import CreateService from "../components/CreateService";
-import RegisterEmployee from "../components/RegisterEmployee";
-import CreateOccupation from "../components/CreateOccupation";
-import CreateOs from "../components/CreateOs";
-import GetOss from "../components/GetOSs";
-import MyService from "../components/MyService";
+// import Sidebar from "../components/Sidebar";
+// import ProjectForm from "../components/ProjectForm";
+// import ProjectList from "../components/ProjectList";
+// import CreateService from "../components/CreateService";
+// import RegisterEmployee from "../components/RegisterEmployee";
+// import CreateOccupation from "../components/CreateOccupation";
+// import CreateOs from "../components/CreateOs";
+// import GetOss from "../components/GetOSs";
+// import MyService from "../components/MyService";
 
-import RdoPdf from "../components/RdoForms/RdoPdf";
+// import RdoPdf from "../components/RdoForms/RdoPdf";
 
 import PowerBIContainer from "../components/dashboard/PowerBIContainer";
-import Login from "./Login";
+// import Login from "./Login";
 
 // import Projects from "../components/Projects";
 

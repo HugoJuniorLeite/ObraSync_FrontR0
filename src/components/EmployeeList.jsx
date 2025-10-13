@@ -4,6 +4,8 @@ import { FileSpreadsheet, X, Loader } from "lucide-react";
 import * as XLSX from "xlsx";
 import employee from "../services/apiEmployee";
 import EmployeeModal from "./EmployeeModal";
+import contract from "../services/apiContract";
+
 
 // 🔹 Estilos (mantive os seus originais)
 const Container = styled.div`
@@ -63,6 +65,12 @@ input, select {
   padding: 0.6rem 1rem; 
   outline: none; 
   min-width: 200px;
+      cursor: pointer; 
+        transition: 0.3s; 
+    &:hover { 
+      background: #004c8a; 
+      } 
+
  } 
  input::placeholder { 
   color: #bbb; 
@@ -225,18 +233,7 @@ const ModalField = styled.p`
   }
 `;
 
-// 🔹 Funções de formatação (reaproveitando)
-// const formatDate = (value) => {
-//   if (!value) return "—";
-//   const d = new Date(value);
-//   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-// };
 
-// const formatCPF = (cpf) => cpf?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") ?? "—";
-// const formatRG = (rg) => rg?.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, "$1.$2.$3-$4") ?? "—";
-// const formatCEP = (cep) => cep?.replace(/(\d{5})(\d{3})/, "$1-$2") ?? "—";
-// const formatBool = (value) => value ? "Sim" : "Não";
-// Função para formatar um único telefone
 const formatPhone = (phone) => {
   if (!phone) return "—";
   const digits = phone.replace(/\D/g, ""); // remove qualquer caractere que não seja número
@@ -263,41 +260,90 @@ const formatPhones = (phones) => {
 // 🌐 Componente principal
 
 
-export default function EmployeeList({ projectId }) {
+export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
-  const [filter, setFilter] = useState("Todos");
+  // const [filter, setFilter] = useState("Todos");
   const [search, setSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [selectedProject, setSelectedProject] = useState("todos");
+
+  const [projects, setProjects] = useState([])
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const [dataProject] = await Promise.all([
+          contract.getContracts(),
+        ]);
+
+        setProjects(dataProject);
+
+      } catch (error) {
+        console.error("Erro ao buscar contratos:", error);
+      }
+    };
+    fetchClients();
+  }, []);
+
+
+
   // Busca de funcionários
   useEffect(() => {
     setLoading(true);
+
     const fetchEmployees = async () => {
       try {
-        const response = await employee.getEmployee(projectId || 13);
+        let response;
+
+        if (selectedProject === "todos") {
+          // 👉 busca todos os funcionários sem filtrar por projeto
+          response = await employee.getAllEmployees();
+        } else if (selectedProject) {
+          // 👉 busca apenas funcionários do projeto selecionado
+          response = await employee.getEmployee(Number(selectedProject));
+        } else {
+          setEmployees([]);
+          return;
+        }
+
         setEmployees(Array.isArray(response) ? response : []);
+        console.log("Funcionários retornados:", response);
       } catch (err) {
-        console.error(err);
+        console.error("Erro ao buscar funcionários:", err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchEmployees();
-  }, [projectId]);
+  }, [selectedProject]);
+
+
 
   // Filtragem e busca
   const filtered = useMemo(() => {
     return employees.filter((emp) => {
       const name = emp?.name?.toLowerCase() || "";
       const status = emp?.active ? "Ativo" : "Inativo";
-      const matchesFilter = filter === "Todos" || status === filter;
+
+      const matchesStatus =
+        statusFilter === "Todos" || status === statusFilter;
+
       const matchesSearch = name.includes(search.toLowerCase());
-      return matchesFilter && matchesSearch;
+
+
+
+
+      return matchesStatus && matchesSearch;
     });
-  }, [employees, filter, search]);
+  }, [employees, statusFilter, search]);
+
+
 
   // Paginação
   const totalPages = Math.max(Math.ceil(filtered.length / itemsPerPage), 1);
@@ -337,8 +383,24 @@ export default function EmployeeList({ projectId }) {
       </TopIndicators>
 
       <SearchBar>
-        <input placeholder="Buscar funcionário..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+
+        <select
+          value={selectedProject}
+          onChange={(e) => setSelectedProject(e.target.value)}
+        >
+          <option value="todos">Todos os funcionários</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>{project.name}</option>
+          ))}
+        </select>
+
+        <input
+          placeholder="Buscar funcionário..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option>Todos</option>
           <option>Ativo</option>
           <option>Em Férias</option>
@@ -373,19 +435,19 @@ export default function EmployeeList({ projectId }) {
         </>
       )}
 
-    {selectedEmployee && (
-  <EmployeeModal
-    employee={selectedEmployee}
-    onClose={() => setSelectedEmployee(null)}
-    onUpdate={(updated) => {
-      setEmployees((prev) =>
-        prev.map((e) => (e.id === updated.id ? updated : e))
-      );
-      setSelectedEmployee(null);
-    }}
-  />
-)}
-     
+      {selectedEmployee && (
+        <EmployeeModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+          onUpdate={(updated) => {
+            setEmployees((prev) =>
+              prev.map((e) => (e.id === updated.id ? updated : e))
+            );
+            setSelectedEmployee(null);
+          }}
+        />
+      )}
+
     </Container>
   );
 }

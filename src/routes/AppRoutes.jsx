@@ -17,7 +17,7 @@ import LoginMaster from "../pages/LoginMaster";
 
 // Páginas principais
 import Home from "../pages/Home";
-import HomeCopy from "../pages/Demonstration/HomeCopy";
+// import HomeCopy from "../pages/Demonstration/HomeCopy";
 import Project from "../pages/Project";
 
 // Componentes e páginas internas
@@ -27,11 +27,11 @@ import CreateOccupation from "../components/CreateOccupation";
 import CreateOs from "../components/CreateOs";
 import CreateService from "../components/CreateService";
 import GetOss from "../components/GetOSs";
-import Rh from "../pages/Demonstration/Rh";
-import Planner from "../pages/Demonstration/Planner";
+// import Rh from "../pages/Demonstration/Rh";
+// import Planner from "../pages/Demonstration/Planner";
 import MyService from "../components/MyService";
-import Tecnico from "../pages/Demonstration/Tecnico";
-import Engenheiro from "../pages/Demonstration/Engenheiro";
+// import Tecnico from "../pages/Demonstration/Tecnico";
+// import Engenheiro from "../pages/Demonstration/Engenheiro";
 import RdoFomrExtensionInative from "../components/RdoForms/RdoFomrExtensionInative";
 import RdoPdf from "../components/RdoForms/RdoPdf";
 import PrincipalPreVgb from "../components/RdoForms/Croqui/PrincipalPreVgb";
@@ -50,7 +50,7 @@ const roleRoutes = [
     allowedRoles: [2, 4, 5],
     routes: [
       { path: "/home", element: <Home /> },
-      { path: "/home-copy", element: <HomeCopy /> },
+      // { path: "/home-copy", element: <HomeCopy /> },
       { path: "/comercial/projetos/cadastrar", element: <Project /> },
       { path: "/comercial/projetos/listar", element: <UnderConstruction featureName="Listar Projetos" /> },
       { path: "/comercial/clientes/cadastrar", element: <RegisterCustomer /> },

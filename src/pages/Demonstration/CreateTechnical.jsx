@@ -1,13 +1,13 @@
-export default function CreateTechnical(){
+// export default function CreateTechnical(){
     
 
     
-    return(
-        <>
-        </>
-    )
+//     return(
+//         <>
+//         </>
+//     )
 
-}
+// }
 
 
-// { "employee_id": 3, "service_id":[1, 2, 3,4] }
+// // { "employee_id": 3, "service_id":[1, 2, 3,4] }

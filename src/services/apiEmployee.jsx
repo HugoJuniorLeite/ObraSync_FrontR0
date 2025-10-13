@@ -12,10 +12,14 @@ async function getEmployee(payload) {
   return response.data;
 }
 
+async function getAllEmployees () {
+  const response = await api.get("/all-employees");
+  return response.data;
+}
 
 
 
 
-const employee = { postEmployee, getEmployee }
+const employee = { postEmployee, getEmployee, getAllEmployees }
 
 export default employee;
