@@ -19,10 +19,11 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BillSchema } from "../schemas/BillSchema";
 import contract from "../services/apiContract";
-import employee from "../services/apiEmployee";
+// import employee from "../services/apiEmployee";
 import { Input } from "./Ui/Input";
 import MyService from "./MyService";
 import RdoPdf from "./RdoForms/RdoPdf";
+import apiEmployee from "../services/apiEmployee";
 
 
 
@@ -96,7 +97,7 @@ export default function GetOss() {
       if (selectedOptionProject =="") return
 
       try {
-        const res = await employee.getEmployee(selectedOptionProject.value)
+        const res = await apiEmployee.getEmployee(selectedOptionProject.value)
         setTechnicians(res);
         setValue("selectedOptionTechnician", []);
         console.log(res, "técnico")

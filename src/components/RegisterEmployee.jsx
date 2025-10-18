@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { FormTitle, FormWrapper, InputWraper, RowInput, Select, StyledLabel, SubmitButton } from "../layouts/Theme";
 import { Input } from "./Ui/Input";
-import employee from "../services/apiEmployee";
+// import employee from "../services/apiEmployee";
 import contract from "../services/apiContract";
 import occupation from "../services/apiOccupation";
 import { EmployeeSchema, } from "../schemas/EmployeeSchema";
 
 // import { IMaskInput } from "react-imask";
 import Checkbox from "./Ui/Checkbox";
+import apiEmployee from "../services/apiEmployee";
 
 
 export default function RegisterEmployee() {
@@ -169,7 +170,7 @@ export default function RegisterEmployee() {
 
     console.log(payload, "onsumit")
     try {
-      await employee.postEmployee(payload);
+      await apiEmployee.postEmployee(payload);
       //    setSelectedOption(""); // <- também limpa o select, se necessário
       reset()         // <- isso limpa os campos do formulário
       setSelectedOptionOccupation("")

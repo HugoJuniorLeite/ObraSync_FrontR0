@@ -2,9 +2,9 @@ import styled, { keyframes } from "styled-components";
 import { useEffect, useState, useMemo } from "react";
 import { FileSpreadsheet, X, Loader } from "lucide-react";
 import * as XLSX from "xlsx";
-import employee from "../services/apiEmployee";
 import EmployeeModal from "./EmployeeModal";
 import contract from "../services/apiContract";
+import apiEmployee from "../services/apiEmployee";
 
 
 // 🔹 Estilos (mantive os seus originais)
@@ -290,39 +290,31 @@ export default function EmployeeList() {
     fetchClients();
   }, []);
 
-
-
-  // Busca de funcionários
-  useEffect(() => {
+  const fetchEmployees = async () => {
     setLoading(true);
-
-    const fetchEmployees = async () => {
-      try {
-        let response;
-
-        if (selectedProject === "todos") {
-          // 👉 busca todos os funcionários sem filtrar por projeto
-          response = await employee.getAllEmployees();
-        } else if (selectedProject) {
-          // 👉 busca apenas funcionários do projeto selecionado
-          response = await employee.getEmployee(Number(selectedProject));
-        } else {
-          setEmployees([]);
-          return;
-        }
-
-        setEmployees(Array.isArray(response) ? response : []);
-        console.log("Funcionários retornados:", response);
-      } catch (err) {
-        console.error("Erro ao buscar funcionários:", err);
-      } finally {
-        setLoading(false);
+    try {
+      let response;
+      if (selectedProject === "todos") {
+        response = await apiEmployee.getAllEmployees();
+      } else {
+        response = await apiEmployee.getEmployee(Number(selectedProject));
       }
-    };
+      // setEmployees(Array.isArray(response) ? response : []);
+      setEmployees(Array.isArray(response) ? response.filter(Boolean) : []);
 
+    } catch (err) {
+      console.error("Erro ao buscar funcionários:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  // 👉 useEffect chama apenas a função reutilizável
+  useEffect(() => {
     fetchEmployees();
   }, [selectedProject]);
-
 
 
   // Filtragem e busca
@@ -330,15 +322,9 @@ export default function EmployeeList() {
     return employees.filter((emp) => {
       const name = emp?.name?.toLowerCase() || "";
       const status = emp?.active ? "Ativo" : "Inativo";
-
       const matchesStatus =
         statusFilter === "Todos" || status === statusFilter;
-
       const matchesSearch = name.includes(search.toLowerCase());
-
-
-
-
       return matchesStatus && matchesSearch;
     });
   }, [employees, statusFilter, search]);
@@ -414,17 +400,24 @@ export default function EmployeeList() {
       ) : (
         <>
           <Grid>
-            {paginated.map((emp) => (
+
+            {paginated.filter(Boolean).map((emp) => (
               <Card key={emp.id} onClick={() => setSelectedEmployee(emp)}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <Avatar color={getColorFromName(emp.name)}>{emp.name.charAt(0).toUpperCase()}</Avatar>
-                  <strong>{emp.name}</strong>
+                  <Avatar color={getColorFromName(emp.name)}>
+                    {emp.name?.charAt(0)?.toUpperCase() || "?"}
+                  </Avatar>
+                  <strong>{emp.name || "Sem nome"}</strong>
                 </div>
-                <span>Função: {emp.occupation_name}</span>
+                <span>Função: {emp.occupation_name || "—"}</span>
                 <span>Telefone: {formatPhones(emp.phones || emp.phone)}</span>
-                <Status status={emp.active ? "Ativo" : "Inativo"}>{emp.active ? "Ativo" : "Inativo"}</Status>
+                <Status status={emp.active ? "Ativo" : "Inativo"}>
+                  {emp.active ? "Ativo" : "Inativo"}
+                </Status>
               </Card>
             ))}
+
+
           </Grid>
 
           <Pagination>
@@ -435,18 +428,12 @@ export default function EmployeeList() {
         </>
       )}
 
-      {selectedEmployee && (
-        <EmployeeModal
-          employee={selectedEmployee}
-          onClose={() => setSelectedEmployee(null)}
-          onUpdate={(updated) => {
-            setEmployees((prev) =>
-              prev.map((e) => (e.id === updated.id ? updated : e))
-            );
-            setSelectedEmployee(null);
-          }}
-        />
-      )}
+      <EmployeeModal
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+        onUpdate={fetchEmployees} // ✅ refaz toda a lista
+      />
+
 
     </Container>
   );

@@ -17,9 +17,12 @@ async function getAllEmployees () {
   return response.data;
 }
 
+async function putAlterEmployee(employee_id, payload) {
+  const response = await api.put(`/alter-employee/${employee_id}`, payload);
+  return response.data;
+}
 
 
+const apiEmployee = { postEmployee, getEmployee, getAllEmployees, putAlterEmployee }
 
-const employee = { postEmployee, getEmployee, getAllEmployees }
-
-export default employee;
+export default apiEmployee;
