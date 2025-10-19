@@ -22,7 +22,11 @@ async function putAlterEmployee(employee_id, payload) {
   return response.data;
 }
 
+async function putInativeEmployee(employee_id) {
+  const response = await api.put(`/deactivate-employee/${employee_id}`);
+  return response.data;
+}
 
-const apiEmployee = { postEmployee, getEmployee, getAllEmployees, putAlterEmployee }
+const apiEmployee = { postEmployee, getEmployee, getAllEmployees, putAlterEmployee, putInativeEmployee }
 
 export default apiEmployee;

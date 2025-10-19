@@ -296,11 +296,15 @@ export default function EmployeeList() {
       let response;
       if (selectedProject === "todos") {
         response = await apiEmployee.getAllEmployees();
+        setCurrentPage(1)
+        
       } else {
         response = await apiEmployee.getEmployee(Number(selectedProject));
+        setCurrentPage(1)
       }
       // setEmployees(Array.isArray(response) ? response : []);
       setEmployees(Array.isArray(response) ? response.filter(Boolean) : []);
+      console.log(response,"response")
 
     } catch (err) {
       console.error("Erro ao buscar funcionários:", err);
@@ -314,6 +318,7 @@ export default function EmployeeList() {
   // 👉 useEffect chama apenas a função reutilizável
   useEffect(() => {
     fetchEmployees();
+    console.log(paginated, "paginated")
   }, [selectedProject]);
 
 
@@ -409,10 +414,11 @@ export default function EmployeeList() {
                   </Avatar>
                   <strong>{emp.name || "Sem nome"}</strong>
                 </div>
+              <span>Projeto: {emp.project?.[0]?.project?.name || "—"}</span>
                 <span>Função: {emp.occupation_name || "—"}</span>
                 <span>Telefone: {formatPhones(emp.phones || emp.phone)}</span>
-                <Status status={emp.active ? "Ativo" : "Inativo"}>
-                  {emp.active ? "Ativo" : "Inativo"}
+                <Status status={emp.active === true ? "Ativo" : "Inativo"}>
+                  {emp.active === true ? "Ativo" : "Inativo"}
                 </Status>
               </Card>
             ))}

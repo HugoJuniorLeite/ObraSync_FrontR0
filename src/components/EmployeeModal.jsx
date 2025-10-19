@@ -3,6 +3,9 @@ import styled from "styled-components";
 import { X, Edit } from "lucide-react";
 import { useEffect } from "react";
 import apiEmployee from "../services/apiEmployee";
+import contract from "../services/apiContract";
+import occupation from "../services/apiOccupation";
+import { minLength } from "zod";
 
 
 // ====== ESTILOS ======
@@ -195,10 +198,10 @@ const formatPhone = (phone) => {
   return phone;
 };
 const formatPhones = (phones) => {
-  if (!phones) return "—";
+  if (!phones) return "";
   if (Array.isArray(phones)) return phones.map(p => formatPhone(p.phoneNumber)).join(", ");
   if (phones.phoneNumber) return formatPhone(phones.phoneNumber);
-  return "—";
+  return "";
 };
 
 // ====== COMPONENTE ======
@@ -209,13 +212,112 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [selectedOptionProject, setSelectedOptionProject] = useState("");
+  const [selectedOptionOccupation, setSelectedOptionOccupation] = useState("");
+
+  const [projects, setProjects] = useState([]);
+  const [occupations, setOccupations] = useState([]);
+  const [availableOccupations, setAvailableOccupations] = useState([]); // ocupações filtradas
+
 
 
 
   useEffect(() => {
-    setFormData(employee);
-    setEditMode(false); // opcional: sempre volta para visualização ao reabrir
+    if (employee) {
+      setFormData(employee);
+      setEditMode(false);
+
+      const projectId = employee.project?.[0]?.project?.id;
+      const occupationId = employee.occupation_id;
+
+      if (projectId) {
+        setSelectedOptionProject(projectId);
+      }
+
+      if (occupationId) {
+        setSelectedOptionOccupation(occupationId);
+      }
+    }
   }, [employee]);
+
+
+  useEffect(() => {
+    if (formData.project_id && occupations.length > 0) {
+      const filtered = occupations.filter(
+        (occ) => occ.project_id === Number(formData.project_id)
+      );
+      setAvailableOccupations(filtered);
+    }
+  }, [formData.project_id, occupations]);
+
+
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [dataProject, dataOccupation] = await Promise.all([
+          contract.getContracts(),
+          occupation.getOccupation()
+        ]);
+        setProjects(dataProject);
+        setOccupations(dataOccupation);
+        console.log(dataProject, "dataProject")
+        console.log(dataOccupation, "dataOccupation")
+        console.log(employee, "employee")
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleProjectChange = (projectId) => {
+    setSelectedOptionProject(projectId);
+
+    setFormData((prev) => ({
+      ...prev,
+      project_id: projectId,
+      occupation_id: "",
+      occupation_name: "",
+      description_occupation: "",
+      salary: "",
+      dangerousness: false
+    }));
+  };
+
+  // const handleOccupationChange = (occupationId) => {
+  //   const selected = availableOccupations.find(
+  //     (occ) => occ.id === Number(occupationId)
+  //   );
+  // if (!selected) return;
+
+  // console.log(employee.occupation_id ,"id", occupationId, "occupationId")
+
+  // const handleOccupationChange = (test) => {
+  // const selected = availableOccupations.find(
+  //   (occ) => occ.id === Number(occupationId)
+  // );
+
+  // console.log(availableOccupations, "availableOccupations")
+  // if (!selected) return;
+
+
+  // setSelectedOptionOccupation(selected.id);
+
+  // console.log(test, test.id,"test")
+
+  // setFormData((prev) => ({
+  //   ...prev,
+  //   occupation_id: test.id,
+  //   occupation_name: test.name,
+  //   description_occupation: selected.description,
+  //   salary: selected.salary,
+  //   dangerousness: selected.dangerousness
+  // }));
+  // };
+
+
 
 
 
@@ -225,25 +327,80 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
 
 
   const handleSave = async () => {
-    if (!formData?.id) return;
-
     try {
+      const payload = {
+        name: formData.name,
+        cpf: formData.cpf,
+        rg: formData.rg,
+        drivers_license: formData.drivers_license,
+        occupation_id: formData?.occupation_id || employee.occupation_id,
+        date_of_birth: formData.date_of_birth,
+        admission_date: formData.admission_date,
+        active: formData.active,
+
+        salary: formData.salary || 0,
+        hazard_pay: formData.hazard_pay || false,
+        occupation_description: formData.occupation_description || "",
+
+        phones: {
+          create: {
+            phoneNumber: formData.phones?.[0]?.phoneNumber || "",
+          },
+        },
+        address: {
+          create: {
+            zip_code: formData.zip_code || "",
+            street_name: formData.street_name || "",
+            number_of_house: formData.number_of_house || "",
+            neighborhood: formData.neighborhood || "",
+            city: formData.city || "",
+            state: formData.state || "",
+            country: formData.country || "",
+          },
+        },
+
+        cnhs: formData.cnh?.length > 0
+          ? {
+            create: formData.cnh.map(c => ({
+              category_cnh: c.category_cnh || "",
+              number_license: c.number_license || "",
+              validity: c.validity || "",
+              first_drivers_license: c.first_drivers_license || "",
+            }))
+          }
+          : undefined,
+
+        project_team: formData.project_id
+          ? {
+            create: {
+              project_id: formData.project_id,
+              active: formData.active ?? true,
+            },
+          }
+          : undefined,
+      };
+
+      console.log(payload, "payload")
+
       setLoading(true);
-      const updatedEmployee = await apiEmployee.putAlterEmployee(formData.id, formData);
 
-      // Pede para o pai refazer a busca
+
+      if (employee.active != formData.active) {
+        const inative = await apiEmployee.putInativeEmployee(formData.id)
+      }
+
+
+      const updatedEmployee = await apiEmployee.putAlterEmployee(formData.id, payload);
+
       if (onUpdate) onUpdate(updatedEmployee);
-
       setEditMode(false);
       onClose();
     } catch (error) {
-      console.error(error);
+      console.error("❌ Erro ao atualizar funcionário:", error);
     } finally {
       setLoading(false);
     }
   };
-
-  if (!employee) return null;
 
 
   const handleChange = (e) => {
@@ -297,6 +454,27 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
   };
 
 
+
+  const handleOccupationChange = (occupationId) => {
+    const selected = occupations.find((occ) => occ.id === Number(occupationId));
+    if (!selected) return;
+
+    console.log(selected, "selected")
+    setSelectedOptionOccupation(selected.id);
+
+    setFormData((prev) => ({
+      ...prev,
+      occupation_id: selected.id,
+      occupation_name: selected.name,
+      occupation_description: selected.description_of_occupation || "",
+      salary: selected.salary || "",
+      total_salary: selected.total_salary || "",
+      dangerousness: selected.dangerousness || false,
+    }));
+  };
+
+
+
   if (!employee || !employee.name) {
     return (
       <ModalOverlay onClick={onClose}>
@@ -332,8 +510,8 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
         <Section>
           <SectionTitle>Dados Pessoais</SectionTitle>
           <Field>{editMode ? <label>Data de Aniversário: <input type="date" name="date_of_birth" value={formData.date_of_birth?.slice(0, 10) || ""} onChange={handleChange} /> </label> : <span>Data de Aniversário: {formatDate(employee.date_of_birth)}</span>}</Field>
-          <Field>{editMode ? <label>RG: <input name="rg" value={formatRG(formData.rg) || ""} onChange={handleChange} /> </label> : <span>RG: {formatRG(employee.rg)}</span>}</Field>
-          <Field>{editMode ? <label>CPF: <input name="cpf" value={formatCPF(formData.cpf) || ""} onChange={handleChange} /> </label> : <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
+          <Field>{editMode ? <label>RG: <input minLength={9} maxLength={13} name="rg" value={formatRG(formData.rg) || ""} onChange={handleChange} /> </label> : <span>RG: {formatRG(employee.rg)}</span>}</Field>
+          <Field>{editMode ? <label>CPF: <input name="cpf" value={formatCPF(formData.cpf) || ""} minLength={9} maxLength={14} onChange={handleChange} /> </label> : <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
           <Field>{editMode ? <label>CNH: <input type="checkbox" name="drivers_license" checked={formData.drivers_license || false} onChange={handleChange} /> </label> : <span>CNH: {formatBool(employee.drivers_license)}</span>}</Field>
 
 
@@ -419,10 +597,107 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <SectionTitle>Dados Corporativos</SectionTitle>
           <Field>{editMode ? <label>Data de Admissão: <input type="date" name="admission_date" value={formData.admission_date?.slice(0, 10) || ""} onChange={handleChange} /> </label> : <span>Data de Admissão: {formatDate(employee.admission_date)}</span>}</Field>
           <Field>{editMode ? <label>Ativo: <input type="checkbox" name="active" checked={formData.active || false} onChange={handleChange} /> </label> : <span>Ativo: {formatBool(employee.active)}</span>}</Field>
-          <Field>{editMode ? <label>Função: <input name="occupation_name" value={formData.occupation_name || ""} onChange={handleChange} /> </label> : <span>Função: {employee.occupation_name}</span>}</Field>
-          <Field>{editMode ? <label>Descrição da Função: <input name="description_occupation" value={formData.description_occupation || ""} onChange={handleChange} /> </label> : <span>Descrição da Função: {employee.description_occupation}</span>}</Field>
-          <Field>{editMode ? <label>Salário: <input type="number" name="salary" value={formData.salary || ""} onChange={handleChange} /> </label> : <span>Salário: {employee.salary ? `R$ ${employee.salary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</span>}</Field>
-          <Field>{editMode ? <label>Recebe Periculosidade: <input type="checkbox" name="dangerousness" checked={formData.dangerousness || false} onChange={handleChange} /> </label> : <span>Recebe Periculosidade: {formatBool(employee.dangerousness)}</span>}</Field>
+        <Field>
+            {editMode ? (
+              <label>
+                Projeto:
+                <select
+                  value={selectedOptionProject}
+                  onChange={(e) => handleProjectChange(e.target.value)}
+                >
+                  <option value={employee.project?.[0]?.project?.id}>{employee.project?.[0]?.project?.name}</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span>Projeto: {employee.project?.[0]?.project?.name || "—"}</span>
+            )}
+          </Field>
+
+          <Field>
+            {editMode ? (
+              <label>
+                Função:
+                <select
+                  value={formData.occupation_id || ""}
+                  onChange={(e) => handleOccupationChange(e.target.value)}
+                >
+                  <option value={employee.occupation_id}>{employee.occupation_name}</option>
+                  {availableOccupations.length > 0
+                    ? availableOccupations.map((occ) => (
+                      <option key={occ.id} value={occ.id}>
+                        {occ.name}
+                      </option>
+                    ))
+                    : occupations.map((occ) => (
+                      <option key={occ.id} value={occ.id}>
+                        {occ.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            ) : (
+              <span>Função: {employee.occupation_name || "—"}</span>
+            )}
+          </Field>
+
+
+          <Field>
+            {editMode ? (
+              <label>
+                Descrição da Função:
+                <input
+                  name="occupation_description"
+                  value={formData.occupation_description || ""}
+                  onChange={handleChange}
+                  readOnly
+                  disabled={true}
+                />
+              </label>
+            ) : (
+              <span>Descrição da Função: {employee.occupation_description || "—"}</span>
+            )}
+          </Field>
+
+          <Field>
+            {editMode ? (
+              <label>
+                Salário:
+                <input
+                  type="number"
+                  name="salary"
+                  value={formData.salary || ""}
+                  onChange={handleChange}
+                  readOnly
+                  disabled={true}
+
+                />
+              </label>
+            ) : (
+              <span>Salário: {employee.salary ? `R$ ${employee.salary.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</span>
+            )}
+          </Field>
+
+          <Field>
+            {editMode ? (
+              <label>
+                Recebe Periculosidade:
+                <input
+                  type="checkbox"
+                  name="dangerousness"
+                  checked={formData.dangerousness || false}
+                  readOnly
+                  disabled={true}
+
+                />
+              </label>
+            ) : (
+              <span>Recebe Periculosidade: {formatBool(employee.dangerousness)}</span>
+            )}
+          </Field>
+
         </Section>
 
         {/* Endereço */}
@@ -452,21 +727,10 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <Field>
             {editMode ? (
               <label>Telefone:
-                {/* <input
-                  name="phones"
-                  value={
-                    Array.isArray(formData.phones)
-                      ? formData.phones.map(p => formatPhone(p.phoneNumber)).join(", ")
-                      : ""
-                  }
-                  onChange={handleChange}
-                  placeholder="Digite o telefone"
-                  maxLength={11}
-                /> */}
-
-                <input
+                  <input
+                  maxLength={17}
                   name="phone"
-                  value={formData?.phones?.[0]?.phoneNumber || ""}
+                  value={formData?.phones?.[0]?.phoneNumber}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -477,7 +741,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
 
 
               </label>) : (
-              <span>Telefones: {formatPhones(employee.phones)}</span>
+              <span>Telefones: {formatPhones(formData.phones)}</span>
             )}
           </Field>
         </Section>
