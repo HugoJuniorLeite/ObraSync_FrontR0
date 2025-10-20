@@ -174,11 +174,6 @@ const ModalField = styled.div`
   }
 `;
 
-
-
-
-
-
 // ====== FUNÇÕES DE FORMATAÇÃO ======
 const formatDate = (value) => {
   if (!value) return "—";
@@ -197,6 +192,7 @@ const formatPhone = (phone) => {
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
   return phone;
 };
+
 const formatPhones = (phones) => {
   if (!phones) return "";
   if (Array.isArray(phones)) return phones.map(p => formatPhone(p.phoneNumber)).join(", ");
@@ -218,9 +214,6 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
   const [projects, setProjects] = useState([]);
   const [occupations, setOccupations] = useState([]);
   const [availableOccupations, setAvailableOccupations] = useState([]); // ocupações filtradas
-
-
-
 
   useEffect(() => {
     if (employee) {
@@ -250,9 +243,6 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
     }
   }, [formData.project_id, occupations]);
 
-
-
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -272,6 +262,44 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
     fetchData();
   }, []);
 
+
+  async function buscarCep(cep) {
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setFormData((prev) => ({
+          ...prev,
+          street_name: data.logradouro || prev.street_name,
+          neighborhood: data.bairro || prev.neighborhood,
+          city: data.localidade || prev.city,
+          state: data.uf || prev.state,
+        }));
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error.message);
+    }
+  }
+
+
+
+  const handleCepChange = (e) => {
+    const cep = e.target.value.replace(/\D/g, ""); // remove não numéricos
+
+    setFormData((prev) => ({
+      ...prev,
+      zip_code: cep,
+    }));
+
+    if (cep.length === 8) {
+      buscarCep(cep);
+    }
+  };
+
+
+
+
   const handleProjectChange = (projectId) => {
     setSelectedOptionProject(projectId);
 
@@ -286,45 +314,9 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
     }));
   };
 
-  // const handleOccupationChange = (occupationId) => {
-  //   const selected = availableOccupations.find(
-  //     (occ) => occ.id === Number(occupationId)
-  //   );
-  // if (!selected) return;
-
-  // console.log(employee.occupation_id ,"id", occupationId, "occupationId")
-
-  // const handleOccupationChange = (test) => {
-  // const selected = availableOccupations.find(
-  //   (occ) => occ.id === Number(occupationId)
-  // );
-
-  // console.log(availableOccupations, "availableOccupations")
-  // if (!selected) return;
-
-
-  // setSelectedOptionOccupation(selected.id);
-
-  // console.log(test, test.id,"test")
-
-  // setFormData((prev) => ({
-  //   ...prev,
-  //   occupation_id: test.id,
-  //   occupation_name: test.name,
-  //   description_occupation: selected.description,
-  //   salary: selected.salary,
-  //   dangerousness: selected.dangerousness
-  // }));
-  // };
-
-
-
-
-
   if (!employee || Object.keys(employee).length === 0) {
     return null; // não renderiza nada até ter dados
   }
-
 
   const handleSave = async () => {
     try {
@@ -359,7 +351,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           },
         },
 
-        cnhs: formData.cnh?.length > 0
+        cnh: formData.cnh?.length > 0
           ? {
             create: formData.cnh.map(c => ({
               category_cnh: c.category_cnh || "",
@@ -454,7 +446,6 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
   };
 
 
-
   const handleOccupationChange = (occupationId) => {
     const selected = occupations.find((occ) => occ.id === Number(occupationId));
     if (!selected) return;
@@ -487,7 +478,6 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
   }
 
 
-
   return (
     <ModalOverlay onClick={onClose}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -512,83 +502,122 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <Field>{editMode ? <label>Data de Aniversário: <input type="date" name="date_of_birth" value={formData.date_of_birth?.slice(0, 10) || ""} onChange={handleChange} /> </label> : <span>Data de Aniversário: {formatDate(employee.date_of_birth)}</span>}</Field>
           <Field>{editMode ? <label>RG: <input minLength={9} maxLength={13} name="rg" value={formatRG(formData.rg) || ""} onChange={handleChange} /> </label> : <span>RG: {formatRG(employee.rg)}</span>}</Field>
           <Field>{editMode ? <label>CPF: <input name="cpf" value={formatCPF(formData.cpf) || ""} minLength={9} maxLength={14} onChange={handleChange} /> </label> : <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
-          <Field>{editMode ? <label>CNH: <input type="checkbox" name="drivers_license" checked={formData.drivers_license || false} onChange={handleChange} /> </label> : <span>CNH: {formatBool(employee.drivers_license)}</span>}</Field>
+     <Field>
+  {editMode ? (
+    <label>
+      CNH:
+      <select
+        name="drivers_license"
+        value={formData.drivers_license ? "true" : "false"}
+        onChange={(e) => {
+          const hasLicense = e.target.value === "true";
+          setFormData((prev) => ({
+            ...prev,
+            drivers_license: hasLicense,
+            cnh: hasLicense
+              ? prev.cnh?.length
+                ? prev.cnh
+                : [
+                    {
+                      number_license: "",
+                      category_cnh: "",
+                      first_drivers_license: "",
+                      validity: "",
+                    },
+                  ]
+              : [], // 🔹 limpa os dados da CNH se "Não"
+          }));
+        }}
+      >
+        <option value="true">Sim</option>
+        <option value="false">Não</option>
+      </select>
+    </label>
+  ) : (
+    <span>CNH: {formatBool(employee.drivers_license)}</span>
+  )}
+</Field>
 
+{/* 🔹 Só renderiza os campos se o usuário tiver CNH */}
+{formData.drivers_license && (
+  <>
+    {!editMode ? (
+      // 🔹 Modo visualização
+      <>
+        {employee.cnh?.length > 0 ? (
+          employee.cnh.map((cnh, index) => (
+            <ModalSection key={index}>
+              <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
+              <ModalField><strong>Número:</strong> {cnh.number_license}</ModalField>
+              <ModalField><strong>Categoria:</strong> {cnh.category_cnh}</ModalField>
+              <ModalField><strong>Primeira Habilitação:</strong> {formatDate(cnh.first_drivers_license)}</ModalField>
+              <ModalField><strong>Validade:</strong> {formatDate(cnh.validity)}</ModalField>
+            </ModalSection>
+          ))
+        ) : (
+          <ModalField>Sem CNH cadastrada</ModalField>
+        )}
+      </>
+    ) : (
+      // ✏️ Modo edição
+      <>
+        {formData.cnh?.length > 0 ? (
+          formData.cnh.map((cnh, index) => (
+            <ModalSection key={index}>
+              <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
 
-          {!editMode ? (
-            // 🔹 Modo visualização
-            <>
-              {employee.cnh?.length > 0 ? (
-                employee.cnh.map((cnh, index) => (
-                  <ModalSection key={index}>
-                    <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
-                    <ModalField><strong>Número:</strong> {cnh.number_license}</ModalField>
-                    <ModalField><strong>Categoria:</strong> {cnh.category_cnh}</ModalField>
-                    <ModalField><strong>Primeira Habilitação:</strong> {formatDate(cnh.first_drivers_license)}</ModalField>
-                    <ModalField><strong>Validade:</strong> {formatDate(cnh.validity)}</ModalField>
-                  </ModalSection>
-                ))
-              ) : (
-                <ModalField>Sem CNH cadastrada</ModalField>
-              )}
-            </>
-          ) : (
-            // ✏️ Modo edição
-            <>
-              {formData.cnh?.length > 0 ? (
-                formData.cnh.map((cnh, index) => (
-                  <ModalSection key={index}>
-                    <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
+              <ModalField>
+                <strong>Número:</strong>
+                <input
+                  type="text"
+                  value={cnh.number_license}
+                  onChange={(e) => handleCnhChange(index, "number_license", e.target.value)}
+                />
+              </ModalField>
 
-                    <ModalField>
-                      <strong>Número:</strong>
-                      <input
-                        type="text"
-                        value={cnh.number_license}
-                        onChange={(e) => handleCnhChange(index, "number_license", e.target.value)}
-                      />
-                    </ModalField>
+              <ModalField>
+                <strong>Categoria:</strong>
+                <select
+                  value={cnh.category_cnh}
+                  onChange={(e) => handleCnhChange(index, "category_cnh", e.target.value)}
+                >
+                  <option value="">Selecione</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="AB">AB</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                </select>
+              </ModalField>
 
-                    <ModalField>
-                      <strong>Categoria:</strong>
-                      <select
-                        value={cnh.category_cnh}
-                        onChange={(e) => handleCnhChange(index, "category_cnh", e.target.value)}
-                      >
-                        <option value="">Selecione</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="AB">AB</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                        <option value="E">E</option>
-                      </select>
-                    </ModalField>
+              <ModalField>
+                <strong>Primeira Habilitação:</strong>
+                <input
+                  type="date"
+                  value={cnh.first_drivers_license?.split("T")[0] || ""}
+                  onChange={(e) => handleCnhChange(index, "first_drivers_license", e.target.value)}
+                />
+              </ModalField>
 
-                    <ModalField>
-                      <strong>Primeira Habilitação:</strong>
-                      <input
-                        type="date"
-                        value={cnh.first_drivers_license?.split("T")[0] || ""}
-                        onChange={(e) => handleCnhChange(index, "first_drivers_license", e.target.value)}
-                      />
-                    </ModalField>
+              <ModalField>
+                <strong>Validade:</strong>
+                <input
+                  type="date"
+                  value={cnh.validity?.split("T")[0] || ""}
+                  onChange={(e) => handleCnhChange(index, "validity", e.target.value)}
+                />
+              </ModalField>
+            </ModalSection>
+          ))
+        ) : (
+          <ModalField>Sem CNH cadastrada</ModalField>
+        )}
+      </>
+    )}
+  </>
+)}
 
-                    <ModalField>
-                      <strong>Validade:</strong>
-                      <input
-                        type="date"
-                        value={cnh.validity?.split("T")[0] || ""}
-                        onChange={(e) => handleCnhChange(index, "validity", e.target.value)}
-                      />
-                    </ModalField>
-                  </ModalSection>
-                ))
-              ) : (
-                <ModalField>Sem CNH cadastrada</ModalField>
-              )}
-            </>
-          )}
 
         </Section>
 
@@ -596,8 +625,25 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
         <Section>
           <SectionTitle>Dados Corporativos</SectionTitle>
           <Field>{editMode ? <label>Data de Admissão: <input type="date" name="admission_date" value={formData.admission_date?.slice(0, 10) || ""} onChange={handleChange} /> </label> : <span>Data de Admissão: {formatDate(employee.admission_date)}</span>}</Field>
-          <Field>{editMode ? <label>Ativo: <input type="checkbox" name="active" checked={formData.active || false} onChange={handleChange} /> </label> : <span>Ativo: {formatBool(employee.active)}</span>}</Field>
-        <Field>
+          <Field>  {editMode ? (
+            <label>
+              Ativo:
+              <select
+                name="active"
+                value={formData.active ? "true" : "false"}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    active: e.target.value === "true",
+                  })
+                }
+              >
+                <option value="true">Sim</option>
+                <option value="false">Não</option>
+              </select>
+            </label>
+          ) : (<span>Ativo: {formatBool(employee.active)}</span>)}</Field>
+          <Field>
             {editMode ? (
               <label>
                 Projeto:
@@ -684,14 +730,21 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
             {editMode ? (
               <label>
                 Recebe Periculosidade:
-                <input
-                  type="checkbox"
-                  name="dangerousness"
-                  checked={formData.dangerousness || false}
-                  readOnly
+                <select
+                  name="hazard_pay"
+                  value={formData.dangerousness ? "true" : "false"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dangerousness: e.target.value === "true",
+                    }))
+                  }
                   disabled={true}
-
-                />
+                  readOnly
+                >
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
+                </select>
               </label>
             ) : (
               <span>Recebe Periculosidade: {formatBool(employee.dangerousness)}</span>
@@ -705,12 +758,82 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <SectionTitle>Endereço</SectionTitle>
           {editMode ? (
             <>
-              <Field><label>Endereço: <input name="street_name" value={formData.street_name || ""} onChange={handleChange} placeholder="Rua" /></label></Field>
-              <Field><label>Numeral: <input name="number_of_house" value={formData.number_of_house || ""} onChange={handleChange} placeholder="Número" /></label></Field>
-              <Field><label>Bairro: <input name="neighborhood" value={formData.neighborhood || ""} onChange={handleChange} placeholder="Bairro" /></label></Field>
-              <Field><label>Cidade: <input name="city" value={formData.city || ""} onChange={handleChange} placeholder="Cidade" /></label></Field>
-              <Field><label>Estado: <input name="state" value={formData.state || ""} onChange={handleChange} placeholder="Estado" /></label></Field>
-              <Field><label>Cep: <input name="zip_code" value={formatCEP(formData.zip_code) || ""} onChange={handleChange} placeholder="CEP" /></label></Field>
+              <Field>
+
+
+                <Field>
+                  <label>
+                    CEP:
+                    <input
+                      name="zip_code"
+                      value={formatCEP(formData.zip_code) || ""}
+                      onChange={handleCepChange}
+                      placeholder="CEP"
+                    />
+                  </label>
+                </Field>
+
+                <Field>
+                  <label>
+                    Numero:
+                    <input
+                      name="number_of_house"
+                      value={formData.number_of_house || ""}
+                      onChange={handleChange}
+                      placeholder="Número"
+                    />
+                  </label>
+                </Field>
+
+
+                <label>
+                  Endereço:
+                  <input
+                    name="street_name"
+                    value={formData.street_name || ""}
+                    onChange={handleChange}
+                    placeholder="Rua"
+                  />
+                </label>
+              </Field>
+
+
+
+              <Field>
+                <label>
+                  Bairro:
+                  <input
+                    name="neighborhood"
+                    value={formData.neighborhood || ""}
+                    onChange={handleChange}
+                    placeholder="Bairro"
+                  />
+                </label>
+              </Field>
+
+              <Field>
+                <label>
+                  Cidade:
+                  <input
+                    name="city"
+                    value={formData.city || ""}
+                    onChange={handleChange}
+                    placeholder="Cidade"
+                  />
+                </label>
+              </Field>
+
+              <Field>
+                <label>
+                  Estado:
+                  <input
+                    name="state"
+                    value={formData.state || ""}
+                    onChange={handleChange}
+                    placeholder="Estado"
+                  />
+                </label>
+              </Field>
 
             </>
           ) : (
@@ -727,7 +850,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <Field>
             {editMode ? (
               <label>Telefone:
-                  <input
+                <input
                   maxLength={17}
                   name="phone"
                   value={formData?.phones?.[0]?.phoneNumber}
@@ -738,8 +861,6 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
                     })
                   }
                 />
-
-
               </label>) : (
               <span>Telefones: {formatPhones(formData.phones)}</span>
             )}
