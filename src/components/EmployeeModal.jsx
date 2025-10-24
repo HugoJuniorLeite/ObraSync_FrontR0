@@ -360,7 +360,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
               first_drivers_license: c.first_drivers_license || "",
             }))
           }
-          : undefined,
+          : [],
 
         project_team: formData.project_id
           ? {
@@ -502,121 +502,121 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
           <Field>{editMode ? <label>Data de Aniversário: <input type="date" name="date_of_birth" value={formData.date_of_birth?.slice(0, 10) || ""} onChange={handleChange} /> </label> : <span>Data de Aniversário: {formatDate(employee.date_of_birth)}</span>}</Field>
           <Field>{editMode ? <label>RG: <input minLength={9} maxLength={13} name="rg" value={formatRG(formData.rg) || ""} onChange={handleChange} /> </label> : <span>RG: {formatRG(employee.rg)}</span>}</Field>
           <Field>{editMode ? <label>CPF: <input name="cpf" value={formatCPF(formData.cpf) || ""} minLength={9} maxLength={14} onChange={handleChange} /> </label> : <span>CPF: {formatCPF(employee.cpf)}</span>}</Field>
-     <Field>
-  {editMode ? (
-    <label>
-      CNH:
-      <select
-        name="drivers_license"
-        value={formData.drivers_license ? "true" : "false"}
-        onChange={(e) => {
-          const hasLicense = e.target.value === "true";
-          setFormData((prev) => ({
-            ...prev,
-            drivers_license: hasLicense,
-            cnh: hasLicense
-              ? prev.cnh?.length
-                ? prev.cnh
-                : [
-                    {
-                      number_license: "",
-                      category_cnh: "",
-                      first_drivers_license: "",
-                      validity: "",
-                    },
-                  ]
-              : [], // 🔹 limpa os dados da CNH se "Não"
-          }));
-        }}
-      >
-        <option value="true">Sim</option>
-        <option value="false">Não</option>
-      </select>
-    </label>
-  ) : (
-    <span>CNH: {formatBool(employee.drivers_license)}</span>
-  )}
-</Field>
-
-{/* 🔹 Só renderiza os campos se o usuário tiver CNH */}
-{formData.drivers_license && (
-  <>
-    {!editMode ? (
-      // 🔹 Modo visualização
-      <>
-        {employee.cnh?.length > 0 ? (
-          employee.cnh.map((cnh, index) => (
-            <ModalSection key={index}>
-              <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
-              <ModalField><strong>Número:</strong> {cnh.number_license}</ModalField>
-              <ModalField><strong>Categoria:</strong> {cnh.category_cnh}</ModalField>
-              <ModalField><strong>Primeira Habilitação:</strong> {formatDate(cnh.first_drivers_license)}</ModalField>
-              <ModalField><strong>Validade:</strong> {formatDate(cnh.validity)}</ModalField>
-            </ModalSection>
-          ))
-        ) : (
-          <ModalField>Sem CNH cadastrada</ModalField>
-        )}
-      </>
-    ) : (
-      // ✏️ Modo edição
-      <>
-        {formData.cnh?.length > 0 ? (
-          formData.cnh.map((cnh, index) => (
-            <ModalSection key={index}>
-              <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
-
-              <ModalField>
-                <strong>Número:</strong>
-                <input
-                  type="text"
-                  value={cnh.number_license}
-                  onChange={(e) => handleCnhChange(index, "number_license", e.target.value)}
-                />
-              </ModalField>
-
-              <ModalField>
-                <strong>Categoria:</strong>
+          <Field>
+            {editMode ? (
+              <label>
+                CNH:
                 <select
-                  value={cnh.category_cnh}
-                  onChange={(e) => handleCnhChange(index, "category_cnh", e.target.value)}
+                  name="drivers_license"
+                  value={formData.drivers_license ? "true" : "false"}
+                  onChange={(e) => {
+                    const hasLicense = e.target.value === "true";
+                    setFormData((prev) => ({
+                      ...prev,
+                      drivers_license: hasLicense,
+                      cnh: hasLicense
+                        ? prev.cnh?.length
+                          ? prev.cnh
+                          : [
+                            {
+                              number_license: "",
+                              category_cnh: "",
+                              first_drivers_license: "",
+                              validity: "",
+                            },
+                          ]
+                        : [], // 🔹 limpa os dados da CNH se "Não"
+                    }));
+                  }}
                 >
-                  <option value="">Selecione</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="AB">AB</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="E">E</option>
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
                 </select>
-              </ModalField>
+              </label>
+            ) : (
+              <span>CNH: {formatBool(employee.drivers_license)}</span>
+            )}
+          </Field>
 
-              <ModalField>
-                <strong>Primeira Habilitação:</strong>
-                <input
-                  type="date"
-                  value={cnh.first_drivers_license?.split("T")[0] || ""}
-                  onChange={(e) => handleCnhChange(index, "first_drivers_license", e.target.value)}
-                />
-              </ModalField>
+          {/* 🔹 Só renderiza os campos se o usuário tiver CNH */}
+          {formData.drivers_license && (
+            <>
+              {!editMode ? (
+                // 🔹 Modo visualização
+                <>
+                  {employee.cnh?.length > 0 ? (
+                    employee.cnh.map((cnh, index) => (
+                      <ModalSection key={index}>
+                        <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
+                        <ModalField><strong>Número:</strong> {cnh.number_license}</ModalField>
+                        <ModalField><strong>Categoria:</strong> {cnh.category_cnh}</ModalField>
+                        <ModalField><strong>Primeira Habilitação:</strong> {formatDate(cnh.first_drivers_license)}</ModalField>
+                        <ModalField><strong>Validade:</strong> {formatDate(cnh.validity)}</ModalField>
+                      </ModalSection>
+                    ))
+                  ) : (
+                    <ModalField>Sem CNH cadastrada</ModalField>
+                  )}
+                </>
+              ) : (
+                // ✏️ Modo edição
+                <>
+                  {formData.cnh?.length > 0 ? (
+                    formData.cnh.map((cnh, index) => (
+                      <ModalSection key={index}>
+                        <ModalSectionTitle>CNH {cnh.category_cnh}</ModalSectionTitle>
 
-              <ModalField>
-                <strong>Validade:</strong>
-                <input
-                  type="date"
-                  value={cnh.validity?.split("T")[0] || ""}
-                  onChange={(e) => handleCnhChange(index, "validity", e.target.value)}
-                />
-              </ModalField>
-            </ModalSection>
-          ))
-        ) : (
-          <ModalField>Sem CNH cadastrada</ModalField>
-        )}
-      </>
-    )}
-  </>
-)}
+                        <ModalField>
+                          <strong>Número:</strong>
+                          <input
+                            type="text"
+                            value={cnh.number_license}
+                            onChange={(e) => handleCnhChange(index, "number_license", e.target.value)}
+                          />
+                        </ModalField>
+
+                        <ModalField>
+                          <strong>Categoria:</strong>
+                          <select
+                            value={cnh.category_cnh}
+                            onChange={(e) => handleCnhChange(index, "category_cnh", e.target.value)}
+                          >
+                            <option value="">Selecione</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="AB">AB</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                          </select>
+                        </ModalField>
+
+                        <ModalField>
+                          <strong>Primeira Habilitação:</strong>
+                          <input
+                            type="date"
+                            value={cnh.first_drivers_license?.split("T")[0] || ""}
+                            onChange={(e) => handleCnhChange(index, "first_drivers_license", e.target.value)}
+                          />
+                        </ModalField>
+
+                        <ModalField>
+                          <strong>Validade:</strong>
+                          <input
+                            type="date"
+                            value={cnh.validity?.split("T")[0] || ""}
+                            onChange={(e) => handleCnhChange(index, "validity", e.target.value)}
+                          />
+                        </ModalField>
+                      </ModalSection>
+                    ))
+                  ) : (
+                    <ModalField>Sem CNH cadastrada</ModalField>
+                  )}
+                </>
+              )}
+            </>
+          )}
 
 
         </Section>
