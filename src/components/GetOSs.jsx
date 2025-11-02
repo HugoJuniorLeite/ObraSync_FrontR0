@@ -189,8 +189,7 @@ export default function GetOss() {
         />
 
         <StyledLabel >Ténico</StyledLabel>
-        <Controller
-        
+ {/* <Controller
           name="selectedOptionTechnician"
           control={control}
           render={({ field: { onChange, ...rest } }) => (
@@ -202,11 +201,57 @@ export default function GetOss() {
               }}
               options={technicians?.map((srv) => ({ value: srv.employee.id, label: srv.employee.name }))}
               placeholder="Selecione o técnico..."
-              isDisabled={!selectedOptionProject}
+              // isDisabled={!selectedOptionTechnician}
               styles={customSelectStyles}
             />
-          )}
-        />
+          )} */}
+        
+        {/* <Controller
+  name="selectedOptionTechnician"
+  control={control}
+  render={({ field: { onChange, ...rest } }) => (
+    <Select
+      {...rest}
+      onChange={(selected) => {
+        console.log("tecnico selecionado:", selected);
+        onChange(selected);
+      }}
+      options={technicians?.map((srv) => ({
+        value: srv.id,
+        label: srv.name
+      }))}
+      placeholder="Selecione o técnico..."
+      isDisabled={!selectedOptionProject}
+      styles={customSelectStyles}
+    />
+  )}
+/> */}
+
+  <Controller
+  name="selectedOptionTechnician"
+  control={control}
+  render={({ field: { onChange, ...rest } }) => (
+    <Select
+      {...rest}
+      onChange={(selected) => {
+        console.log("tecnico selecionado:", selected);
+        onChange(selected);
+      }}
+      options={technicians
+        ?.filter((srv) => srv.active) // apenas ativos
+        .map((srv) => ({
+          value: srv.id,
+          label: srv.name
+        }))
+      }
+      placeholder="Selecione o técnico..."
+      isDisabled={!selectedOptionProject}
+      styles={customSelectStyles}
+    />
+  )}
+/>
+      
+        
 
 
 

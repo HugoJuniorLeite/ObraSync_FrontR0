@@ -115,16 +115,19 @@ const ButtonGroup = styled.div`
   margin-top: 1rem;
 `;
 
-
 const Button = styled(({ primary, ...props }) => <button {...props} />)`
-  border: ${(props) => (props.primary ? "none" : "1px solid #00396b")};
-  background: ${(props) => (props.primary ? "#3b82f6" : "transparent")};
+ border-radius: 8px; 
+    padding: 0.6rem 1.2rem; 
+   align-items: center; 
+    gap: 0.5rem; 
+  border: ${(props) => (props.primary ? "1px solid #00396b" : "1px solid #00396b")};
+  background: ${(props) => (props.primary ? "#00396b" : "#00396b")};
   color: ${(props) => (props.primary ? "white" : "#f5f5f5")};
   cursor: pointer;
   transition: 0.3s;
 
   &:hover {
-    background: ${(props) => (props.primary ? "#2563eb" : "#00396b")};
+    background: ${(props) => (props.primary ? " #004c8a" : " #004c8a")};
   }
 
   &:disabled {

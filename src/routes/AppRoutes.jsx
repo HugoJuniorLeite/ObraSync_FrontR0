@@ -37,6 +37,7 @@ import RdoPdf from "../components/RdoForms/RdoPdf";
 import PrincipalPreVgb from "../components/RdoForms/Croqui/PrincipalPreVgb";
 import UnderConstruction from "../pages/UnderConstruction";
 import EmployeeList from "../components/EmployeeList";
+import OccupationList from "../components/OccupationList";
 
 
 // Estilo principal
@@ -102,7 +103,7 @@ const roleRoutes = [
       { path: "/funcionarios/cadastrar", element: <RegisterEmployee /> },
       { path: "/funcionarios/listar", element: <EmployeeList /> },
       { path: "/ocupacoes/cadastrar", element: <CreateOccupation /> },
-      { path: "/ocupacoes/listar", element: <UnderConstruction featureName="Listar Ocupações" />},
+      { path: "/ocupacoes/listar", element: <OccupationList />},
 
     ],
   },
