@@ -6,6 +6,8 @@ import EmployeeModal from "./EmployeeModal";
 import contract from "../services/apiContract";
 import apiEmployee from "../services/apiEmployee";
 
+import RegisterEmployeeModal from "./RegisterEmployeeModal";
+
 
 // 🔹 Estilos (mantive os seus originais)
 const Container = styled.div`
@@ -267,12 +269,16 @@ export default function EmployeeList() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
+  const itemsPerPage = 15;
 
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [selectedProject, setSelectedProject] = useState("todos");
 
   const [projects, setProjects] = useState([])
+
+  //
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -362,10 +368,32 @@ export default function EmployeeList() {
 
   return (
     <Container>
-      <Header>
+      {/* <Header>
         <Title>Funcionários do Projeto</Title>
         <span>{filtered.length} encontrados</span>
-      </Header>
+      </Header> */}
+
+    {/* trecho alterado  */}
+<Header>
+  <Title>Funcionários do Projeto</Title>
+
+  <button
+    onClick={() => setShowCreateModal(true)}
+    style={{
+      background: "#38bdf8",
+      border: "none",
+      padding: "0.6rem 1rem",
+      borderRadius: "8px",
+      color: "#0f172a",
+      fontWeight: "600",
+      cursor: "pointer"
+    }}
+  >
+    + Novo Colaborador
+  </button>
+</Header>
+
+
 
       <TopIndicators>
         <IndicatorCard>Ativos: <span>{totalAtivos}</span></IndicatorCard>
@@ -434,11 +462,27 @@ export default function EmployeeList() {
         </>
       )}
 
-      <EmployeeModal
+      {/* <EmployeeModal
         employee={selectedEmployee}
         onClose={() => setSelectedEmployee(null)}
         onUpdate={fetchEmployees} // ✅ refaz toda a lista
-      />
+      /> */}
+
+{/* trecho novo */}
+
+<EmployeeModal
+  employee={selectedEmployee}
+  onClose={() => setSelectedEmployee(null)}
+  onUpdate={fetchEmployees}
+/>
+
+{showCreateModal && (
+  <RegisterEmployeeModal
+    onClose={() => setShowCreateModal(false)}
+    onSave={fetchEmployees}
+  />
+)}
+
 
 
     </Container>

@@ -6,8 +6,9 @@ import { CreateServiceSchema } from "../schemas/CreateServiceSchema";
 import contract from "../services/apiContract";
 import { useEffect, useState } from "react";
 import { MoneyInputFallback } from "./Ui/MoneyInputFallBack";
-import occupation from "../services/apiOccupation";
+// import occupation from "../services/apiOccupation";
 import Select from "react-select";
+import apiOccupation from "../services/apiOccupation";
 
 export default function CreateService() {
   const [selectedOption, setSelectedOption] = useState("")
@@ -38,7 +39,7 @@ export default function CreateService() {
       try {
         const [dataProject, dataOcupation] = await Promise.all([
           contract.getContracts(),
-          occupation.getOccupation(),
+          apiOccupation.getOccupation(),
         ]);
 
         setProjects(dataProject);

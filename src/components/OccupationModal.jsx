@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import axios from "axios";
 import contract from "../services/apiContract";
+import apiOccupation from "../services/apiOccupation";
 
 const Overlay = styled.div`
   position: fixed;
@@ -166,13 +167,21 @@ export default function OccupationModal({ occupation, onClose, onSave }) {
       [name]: type === "checkbox" ? checked : value,
     }));
   };
-
+  console.log(formData)
+  
+  const payload = {
+    name: formData.name || "",
+    description_of_occupation: formData.description|| "",
+    salary: Number(formData.base_salary) || "",
+    dangerousness: formData.hazard_pay|| false,
+  }
+  
   const handleSave = async () => {
     try {
       if (occupation && occupation.id) {
-        await axios.put(`/api/occupations/${occupation.id}`, formData);
+        await apiOccupation.updateOccupationById(occupation.id, payload);
       } else {
-        await axios.post("/api/occupations", formData);
+        await apiOccupation.postOccupation(payload);
       }
       onSave?.();
       setIsEditing(false);
@@ -209,7 +218,7 @@ export default function OccupationModal({ occupation, onClose, onSave }) {
           />
         </FieldGroup>
 
-        <FieldGroup>
+        {/* <FieldGroup>
           <Label>Projeto Vinculado</Label>
           <Select
             name="project_id"
@@ -224,7 +233,7 @@ export default function OccupationModal({ occupation, onClose, onSave }) {
               </option>
             ))}
           </Select>
-        </FieldGroup>
+        </FieldGroup> */}
 
         <FieldGroup>
           <Label>Salário Base</Label>

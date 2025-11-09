@@ -4,8 +4,9 @@ import { X, Edit } from "lucide-react";
 import { useEffect } from "react";
 import apiEmployee from "../services/apiEmployee";
 import contract from "../services/apiContract";
-import occupation from "../services/apiOccupation";
+// import occupation from "../services/apiOccupation";
 import { minLength } from "zod";
+import apiOccupation from "../services/apiOccupation";
 
 
 // ====== ESTILOS ======
@@ -251,7 +252,7 @@ export default function EmployeeModal({ employee, onUpdate, onClose }) {
       try {
         const [dataProject, dataOccupation] = await Promise.all([
           contract.getContracts(),
-          occupation.getOccupation()
+          apiOccupation.getOccupation()
         ]);
         setProjects(dataProject);
         setOccupations(dataOccupation);

@@ -16,10 +16,19 @@ async function getOccupationById(payload) {
   return response.data;
 }
 
+async function deleteOccupationById(payload) {
+  const response = await api.put(`/delete-occupation/${payload}`);
+  return response.data;
+}
+
+async function updateOccupationById(id, payload) {
+  const response = await api.put(`/update-occupation/${id}`,payload);
+  return response.data;
+}
 
 
-const occupation = { postOccupation, getOccupation, getOccupationById }
+const apiOccupation = { postOccupation, getOccupation, getOccupationById, deleteOccupationById, updateOccupationById }
 
-export default occupation;
+export default apiOccupation;
 
 

@@ -5,12 +5,13 @@ import { FormTitle, FormWrapper, InputWraper, RowInput, Select, StyledLabel, Sub
 import { Input } from "./Ui/Input";
 // import employee from "../services/apiEmployee";
 import contract from "../services/apiContract";
-import occupation from "../services/apiOccupation";
+// import occupation from "../services/apiOccupation";
 import { EmployeeSchema, } from "../schemas/EmployeeSchema";
 
 // import { IMaskInput } from "react-imask";
 import Checkbox from "./Ui/Checkbox";
 import apiEmployee from "../services/apiEmployee";
+import apiOccupation from "../services/apiOccupation";
 
 
 export default function RegisterEmployee() {
@@ -43,61 +44,61 @@ export default function RegisterEmployee() {
   const hasCNH = watch("driversLicense");
 
 
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const [dataProject, dataOcupation] = await Promise.all([
-          contract.getContracts(),
-          occupation.getOccupation()
-        ]);
-
-        setProjects(dataProject);
-        setOccupations(dataOcupation);
-        console.log(dataOcupation)
-      } catch (error) {
-        console.error("Erro ao buscar contratos:", error);
-      }
-    };
-    fetchClients();
-  }, []);
-
   // useEffect(() => {
-
-  //   async function fetchProjects() {
+  //   const fetchClients = async () => {
   //     try {
-  //       const res = await contract.getContracts()
-  //       setProjects(res);
-  //       setValue("selectedOptionProject", "");
-  //       console.log(res, "res")
-  //     } catch (err) {
-  //       console.error("Erro ao buscar serviços:", err.message);
-  //       console.log("aqui")
-  //       setProjects([]);
+  //       const [dataProject, dataOcupation] = await Promise.all([
+  //         contract.getContracts(),
+  //         apiOccupation.getOccupation()
+  //       ]);
+
+  //       setProjects(dataProject);
+  //       setOccupations(dataOcupation);
+  //       console.log(dataOcupation)
+  //     } catch (error) {
+  //       console.error("Erro ao buscar contratos:", error);
   //     }
-  //   }
-  //   fetchProjects();
+  //   };
+  //   fetchClients();
   // }, []);
 
+  useEffect(() => {
 
-  // useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await contract.getContracts()
+        setProjects(res);
+        setValue("selectedOptionProject", "");
+        console.log(res, "res")
+      } catch (err) {
+        console.error("Erro ao buscar serviços:", err.message);
+        console.log("aqui")
+        setProjects([]);
+      }
+    }
+    fetchProjects();
+  }, []);
 
-  //   async function fetchOccupation() {
-  //    try {
-  //     const res = await occupation.getOccupationById(selectedOptionProject);
 
-  //     // garante que sempre será array
-  //     const occupationsArray = Array.isArray(res) ? res : [res];
+  useEffect(() => {
 
-  //     setOccupations(occupationsArray);
-  //     setValue("selectedOptionOccupation", "");
-  //     console.log(occupationsArray, "técnico");
-  //   } catch (err) {
-  //       console.error("Erro ao buscar serviços:", err);
-  //       setOccupations([]);
-  //     }
-  //   }
-  //   fetchOccupation();
-  // }, [selectedOptionProject]);
+    async function fetchOccupation() {
+     try {
+      const res = await occupation.getOccupationById(selectedOptionProject);
+
+      // garante que sempre será array
+      const occupationsArray = Array.isArray(res) ? res : [res];
+
+      setOccupations(occupationsArray);
+      setValue("selectedOptionOccupation", "");
+      console.log(occupationsArray, "técnico");
+    } catch (err) {
+        console.error("Erro ao buscar serviços:", err);
+        setOccupations([]);
+      }
+    }
+    fetchOccupation();
+  }, [selectedOptionProject]);
 
 
   // limpa campos CNH quando desmarca

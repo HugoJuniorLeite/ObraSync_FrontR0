@@ -31,7 +31,7 @@ export const menuItems = [
     icon: FaHome,
     occupation: [9, 2, 4, 5],
   },
-    {
+  {
     label: "Comercial",
     icon: FaFolderOpen, // pasta principal
     occupation: [9, 2, 4, 5],
@@ -95,7 +95,7 @@ export const menuItems = [
       },
     ],
   },
-   {
+  {
     label: "RDO",
     icon: FaFolderOpen, // pasta principal
     occupation: [9, 1, 7, 8, 2, 4, 5],
@@ -153,41 +153,43 @@ export const menuItems = [
     submenu: [
       {
         label: "Funcionários",
+        path: "/funcionarios/listar",
         icon: FaUsers,
         occupation: [8, 9, 2, 4, 5, 6],
-        submenu: [
-          {
-            label: "Criar",
-            path: "/funcionarios/cadastrar",
-            icon: FaUserPlus,
-            occupation: [8, 9, 2, 4, 5, 6],
-          },
-          {
-            label: "Listar",
-            path: "/funcionarios/listar",
-            icon: FaListUl,
-            occupation: [9, 2, 4, 5, 6],
-          },
-        ],
+        // submenu: [
+        //   {
+        //     label: "Criar",
+        //     path: "/funcionarios/cadastrar",
+        //     icon: FaUserPlus,
+        //     occupation: [8, 9, 2, 4, 5, 6],
+        //   },
+        //   {
+        //     label: "Listar",
+        //     path: "/funcionarios/listar",
+        //     icon: FaListUl,
+        //     occupation: [9, 2, 4, 5, 6],
+        //   },
+        // ],
       },
       {
         label: "Ocupações",
+        path: "/ocupacoes/listar",
         icon: FaIdBadge,
         occupation: [9, 2, 4, 5, 6],
-        submenu: [
-          {
-            label: "Criar",
-            path: "/ocupacoes/cadastrar",
-            icon: FaUserPlus,
-            occupation: [9, 2, 4, 5, 6],
-          },
-          {
-            label: "Listar",
-            path: "/ocupacoes/listar",
-            icon: FaListUl,
-            occupation: [9, 2, 4, 5, 6],
-          },
-        ],
+        //   submenu: [
+        //     {
+        //       label: "Criar",
+        //       path: "/ocupacoes/cadastrar",
+        //       icon: FaUserPlus,
+        //       occupation: [9, 2, 4, 5, 6],
+        //     },
+        //     {
+        //       label: "Listar",
+        //       path: "/ocupacoes/listar",
+        //       icon: FaListUl,
+        //       occupation: [9, 2, 4, 5, 6],
+        //     },
+        //   ],
       },
     ],
   },
@@ -196,18 +198,18 @@ export const menuItems = [
     icon: FaChartLine,
     occupation: [9, 2, 4, 5],
     submenu: [
- 
-       {
+
+      {
         label: "Ordens",
         icon: FaClipboard,
         occupation: [9, 4, 5, 3],
         submenu: [
-               {
-        label: "Criar nota",
-        path: "/notas",
-        icon: FaFileAlt,
-        occupation: [9, 2, 4, 5, 3],
-      },
+          {
+            label: "Criar nota",
+            path: "/notas",
+            icon: FaFileAlt,
+            occupation: [9, 2, 4, 5, 3],
+          },
           {
             label: "Programar",
             path: "/ordens/Despachar",

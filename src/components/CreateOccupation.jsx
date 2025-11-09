@@ -3,10 +3,11 @@ import { Controller, useForm } from "react-hook-form";
 import { Input } from "./Ui/Input";
 import { ErrorText, FormTitle, FormWrapper, InputWraper, Select, StyledLabel, SubmitButton, TextArea } from "../layouts/Theme";
 import { useState } from "react";
-import occupation from "../services/apiOccupation";
+// import occupation from "../services/apiOccupation";
 import { CreateOccupationSchema } from "../schemas/CreateOccupationSchema";
 import Checkbox from "./Ui/Checkbox";
 import { MoneyInputFallback } from "./Ui/MoneyInputFallBack";
+import apiOccupation from "../services/apiOccupation";
 
 export default function CreateOccupation() {
   const [selectedOption, setSelectedOption] = useState("")
@@ -34,7 +35,7 @@ export default function CreateOccupation() {
     console.log(payload, "onsumit")
 
     try {
-      await occupation.postOccupation(payload);
+      await apiOccupation.postOccupation(payload);
       setSelectedOption(""); // <- também limpa o select, se necessário
       reset()         // <- isso limpa os campos do formulário
     } catch (err) {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import axios from "axios";
 import { Eye, Trash2, PlusCircle } from "lucide-react";
 import OccupationModal from "./OccupationModal";
-import occupation from "../services/apiOccupation";
+import apiOccupation from "../services/apiOccupation";
+
 
 const Container = styled.div`
   background: #0f172a;
@@ -21,6 +21,7 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  /* width:80%; */
 `;
 
 const Title = styled.h1`
@@ -46,7 +47,7 @@ const AddButton = styled.button`
 `;
 
 const Table = styled.table`
-  width: 100%;
+width:100%;
   border-collapse: collapse;
   background: #1e293b;
   border-radius: 8px;
@@ -111,7 +112,7 @@ export default function OccupationList() {
 
 const fetchOccupations = async () => {
   try {
-    const response = await occupation.getOccupation();
+    const response = await apiOccupation.getOccupation();
 
     console.log("📦 Retorno da API:", response);
 
@@ -147,7 +148,7 @@ const fetchOccupations = async () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Tem certeza que deseja excluir esta ocupação?")) return;
     try {
-      await axios.delete(`/api/occupations/${id}`);
+      await apiOccupation.deleteOccupationById(id);
       fetchOccupations();
     } catch (error) {
       console.error("Erro ao excluir ocupação:", error);
