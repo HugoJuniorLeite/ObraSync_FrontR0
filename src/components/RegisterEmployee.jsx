@@ -435,8 +435,6 @@ export default function RegisterEmployee() {
             ))}
           </Select>
         </div>
-
-
         <div>
           <StyledLabel >Cargo:</StyledLabel>
           <Select id="select" value={selectedOptionOccupation}
