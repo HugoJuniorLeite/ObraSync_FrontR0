@@ -378,15 +378,34 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
 
             {errorMessage && <p style={{ color: "#f87171", textAlign: "center" }}>{errorMessage}</p>}
 
-            <ButtonBar>
-                {step > 1 && <Button onClick={() => setStep(step - 1)}><ChevronLeft size={18} />Voltar</Button>}
-                {step < 5 && (
-                    <Button primary disabled={step === 3 && (!data.project_id || !data.occupation_id)} onClick={() => validateStep() && setStep(step + 1)}>
-                        Próximo <ChevronRight size={18} />
-                    </Button>
-                )}
+        <ButtonBar>
 
-            </ButtonBar>
+  {/* Botão Voltar */}
+  {step > 1 && (
+    <Button onClick={() => setStep(step - 1)}>
+      <ChevronLeft size={18} /> Voltar
+    </Button>
+  )}
+
+  {/* Se ainda não chegou na última etapa → mostra Próximo */}
+  {step < 5 && (
+    <Button 
+      $primary 
+      disabled={step === 3 && (!data.project_id || !data.occupation_id)}
+      onClick={() => validateStep() && setStep(step + 1)}
+    >
+      Próximo <ChevronRight size={18} />
+    </Button>
+  )}
+
+  {/* ✅ Se estiver no último passo → mostra Finalizar */}
+  {step === 5 && (
+    <Button $primary onClick={saveEmployee}>
+      <Save size={18} /> Finalizar Cadastro
+    </Button>
+  )}
+</ButtonBar>
+
 
         </StepContainer>
     );
