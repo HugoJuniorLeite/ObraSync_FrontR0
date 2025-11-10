@@ -45,23 +45,6 @@ const ButtonBar = styled.div`
   justify-content: space-between;
 `;
 
-// const Button = styled.button`
-//   display: flex;
-//   align-items: center;
-//   gap: 6px;
-//   background: ${(p) => (p.primary ? "#38bdf8" : "transparent")};
-//   border: 1px solid #38bdf8;
-//   color: ${(p) => (p.primary ? "#0f172a" : "#38bdf8")};
-//   padding: 0.6rem 1.2rem;
-//   border-radius: 8px;
-//   font-weight: 600;
-//   cursor: pointer;
-//   transition: 0.3s;
-//   &:hover {
-//     background: ${(p) => (p.primary ? "#0ea5e9" : "#1e293b")};
-//   }
-// `;
-
 const Button = styled.button`
   display:flex; align-items:center; gap:6px;
   background: ${p => (p.$primary ? "#38bdf8" : "transparent")};
@@ -73,12 +56,40 @@ const Button = styled.button`
   }
 `;
 
-
 const variants = {
     hidden: { opacity: 0, x: 30 },
     visible: { opacity: 1, x: 0, transition: { duration: 0.35 } },
     exit: { opacity: 0, x: -30, transition: { duration: 0.3 } }
 };
+
+
+const ReviewSection = styled.div`
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  color: #e2e8f0;
+`;
+
+const ReviewTitle = styled.h4`
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #38bdf8;
+  font-weight: 600;
+`;
+
+const ReviewRow = styled.p`
+  margin: 4px 0;
+  font-size: 0.95rem;
+
+  strong {
+    color: #94a3b8;
+    font-weight: 500;
+    margin-right: 4px;
+  }
+`;
+
 
 /* ===== COMPONENTE PRINCIPAL ===== */
 
@@ -89,9 +100,9 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
 
     const [projects, setProjects] = useState([]);
     const [occupations, setOccupations] = useState([]);
-    
-    
-    
+
+
+
     const [data, setData] = useState({
         name: "",
         birthDate: "",
@@ -298,29 +309,29 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
 
 
                         <AutocompleteSelect
-  value={projects.find(p => p.id == data.project_id) && { 
-    value: data.project_id, 
-    label: projects.find(p => p.id == data.project_id)?.name 
-  }}
-  placeholder="Selecione o projeto"
-  options={(Array.isArray(projects) ? projects : []).map(p => ({ value: p.id, label: p.name }))}
-  onChange={(project) => setData(prev => ({ ...prev, project_id: project.value, occupation_id: "" }))}
-  strict
-/>
+                            value={projects.find(p => p.id == data.project_id) && {
+                                value: data.project_id,
+                                label: projects.find(p => p.id == data.project_id)?.name
+                            }}
+                            placeholder="Selecione o projeto"
+                            options={(Array.isArray(projects) ? projects : []).map(p => ({ value: p.id, label: p.name }))}
+                            onChange={(project) => setData(prev => ({ ...prev, project_id: project.value, occupation_id: "" }))}
+                            strict
+                        />
 
-<AutocompleteSelect
-  value={occupations.find(o => o.id == data.occupation_id) && {
-    value: data.occupation_id,
-    label: occupations.find(o => o.id == data.occupation_id)?.name
-  }}
-  placeholder="Selecione o cargo"
-  options={(Array.isArray(occupations) ? occupations : []).map(o => ({
-    value: o.id,
-    label: o.name
-  }))}
-  onChange={(occ) => setData(prev => ({ ...prev, occupation_id: occ.value }))}
-  strict
-/>
+                        <AutocompleteSelect
+                            value={occupations.find(o => o.id == data.occupation_id) && {
+                                value: data.occupation_id,
+                                label: occupations.find(o => o.id == data.occupation_id)?.name
+                            }}
+                            placeholder="Selecione o cargo"
+                            options={(Array.isArray(occupations) ? occupations : []).map(o => ({
+                                value: o.id,
+                                label: o.name
+                            }))}
+                            onChange={(occ) => setData(prev => ({ ...prev, occupation_id: occ.value }))}
+                            strict
+                        />
 
                         {/* ✅ Card de detalhes da função */}
                         {selectedOccupationData && (
@@ -350,7 +361,19 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
                     <motion.div key="4" variants={variants} initial="hidden" animate="visible" exit="exit">
                         <StepTitle>CNH</StepTitle>
                         <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <input type="checkbox" checked={data.hasCNH} onChange={() => setData({ ...data, hasCNH: !data.hasCNH })} />
+                            <input
+                                type="checkbox"
+                                checked={data.hasCNH}
+                                onChange={() =>
+                                    setData(prev => ({
+                                        ...prev,
+                                        hasCNH: !prev.hasCNH,
+                                        cnh: !prev.hasCNH
+                                            ? prev.cnh // se está ativando, mantém
+                                            : { number: "", category: "", validity: "", firstLicense: "" } // se está desativando, limpa
+                                    }))
+                                }
+                            />
                             Possui CNH?
                         </label>
 
@@ -367,10 +390,46 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
 
                 {step === 5 && (
                     <motion.div key="5" variants={variants} initial="hidden" animate="visible" exit="exit">
-                        <StepTitle>Revisão</StepTitle>
-                        <pre style={{ background: "#0f172a", padding: "1rem", borderRadius: 8 }}>
-                            {JSON.stringify(data, null, 2)}
-                        </pre>
+                        <StepTitle>Revisão dos Dados</StepTitle>
+
+                        <ReviewSection>
+                            <ReviewTitle>Dados Pessoais</ReviewTitle>
+                            <ReviewRow><strong>Nome:</strong> {data.name}</ReviewRow>
+                            <ReviewRow><strong>Nascimento:</strong> {data.birthDate}</ReviewRow>
+                            <ReviewRow><strong>CPF:</strong> {data.cpf}</ReviewRow>
+                            <ReviewRow><strong>RG:</strong> {data.rg}</ReviewRow>
+                            <ReviewRow><strong>Telefone:</strong> {data.phone}</ReviewRow>
+                        </ReviewSection>
+
+                        <ReviewSection>
+                            <ReviewTitle>Endereço</ReviewTitle>
+                            <ReviewRow><strong>CEP:</strong> {data.zip_code}</ReviewRow>
+                            <ReviewRow><strong>Rua:</strong> {data.street_name}</ReviewRow>
+                            <ReviewRow><strong>Número:</strong> {data.number_of_house}</ReviewRow>
+                            <ReviewRow><strong>Bairro:</strong> {data.neighborhood}</ReviewRow>
+                            <ReviewRow><strong>Cidade:</strong> {data.city} - {data.state}</ReviewRow>
+                        </ReviewSection>
+
+                        <ReviewSection>
+                            <ReviewTitle>Vínculo Corporativo</ReviewTitle>
+                            <ReviewRow><strong>Projeto:</strong> {projects.find(p => p.id == data.project_id)?.name}</ReviewRow>
+                            <ReviewRow><strong>Cargo:</strong> {occupations.find(o => o.id == data.occupation_id)?.name}</ReviewRow>
+                            <ReviewRow><strong>Data de Admissão:</strong> {data.admissionDate}</ReviewRow>
+                            <ReviewRow><strong>Descrição:</strong> {selectedOccupationData.description_of_occupation || "Sem descrição"}</ReviewRow>
+                            <ReviewRow><strong>Salário Base:</strong> R$ {Number(selectedOccupationData.salary).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</ReviewRow>
+                            <ReviewRow><strong>Total com Adicionais:</strong> R$ {Number(selectedOccupationData.total_salary).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</ReviewRow>
+                            <ReviewRow><strong>Periculosidade:</strong> {selectedOccupationData.dangerousness ? "Sim" : "Não"}</ReviewRow>
+                        </ReviewSection>
+
+                        {data.hasCNH && (
+                            <ReviewSection>
+                                <ReviewTitle>CNH</ReviewTitle>
+                                <ReviewRow><strong>Número:</strong> {data.cnh.number}</ReviewRow>
+                                <ReviewRow><strong>Categoria:</strong> {data.cnh.category}</ReviewRow>
+                                <ReviewRow><strong>Primeira Habilitação:</strong> {data.cnh.firstLicense}</ReviewRow>
+                                <ReviewRow><strong>Validade:</strong> {data.cnh.validity}</ReviewRow>
+                            </ReviewSection>
+                        )}
                     </motion.div>
                 )}
 
@@ -378,33 +437,33 @@ export default function RegisterEmployeeWizard({ onSave, onClose }) {
 
             {errorMessage && <p style={{ color: "#f87171", textAlign: "center" }}>{errorMessage}</p>}
 
-        <ButtonBar>
+            <ButtonBar>
 
-  {/* Botão Voltar */}
-  {step > 1 && (
-    <Button onClick={() => setStep(step - 1)}>
-      <ChevronLeft size={18} /> Voltar
-    </Button>
-  )}
+                {/* Botão Voltar */}
+                {step > 1 && (
+                    <Button onClick={() => setStep(step - 1)}>
+                        <ChevronLeft size={18} /> Voltar
+                    </Button>
+                )}
 
-  {/* Se ainda não chegou na última etapa → mostra Próximo */}
-  {step < 5 && (
-    <Button 
-      $primary 
-      disabled={step === 3 && (!data.project_id || !data.occupation_id)}
-      onClick={() => validateStep() && setStep(step + 1)}
-    >
-      Próximo <ChevronRight size={18} />
-    </Button>
-  )}
+                {/* Se ainda não chegou na última etapa → mostra Próximo */}
+                {step < 5 && (
+                    <Button
+                        $primary
+                        disabled={step === 3 && (!data.project_id || !data.occupation_id)}
+                        onClick={() => validateStep() && setStep(step + 1)}
+                    >
+                        Próximo <ChevronRight size={18} />
+                    </Button>
+                )}
 
-  {/* ✅ Se estiver no último passo → mostra Finalizar */}
-  {step === 5 && (
-    <Button $primary onClick={saveEmployee}>
-      <Save size={18} /> Finalizar Cadastro
-    </Button>
-  )}
-</ButtonBar>
+                {/* ✅ Se estiver no último passo → mostra Finalizar */}
+                {step === 5 && (
+                    <Button $primary onClick={saveEmployee}>
+                        <Save size={18} /> Finalizar Cadastro
+                    </Button>
+                )}
+            </ButtonBar>
 
 
         </StepContainer>
