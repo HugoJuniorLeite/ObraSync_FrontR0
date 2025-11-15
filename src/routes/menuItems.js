@@ -106,6 +106,12 @@ export const menuItems = [
         icon: FaClipboard, // item
         occupation: [9, 1, 7, 8, 2, 4, 5],
       },
+         {
+        label: "Gasista",
+        path: "/rdo/gasista",
+        icon: FaClipboard, // item
+        occupation: [9, 1, 7, 8, 2, 4, 5],
+      },
     ],
   },
   {

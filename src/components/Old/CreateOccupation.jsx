@@ -1,13 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { Input } from "./Ui/Input";
-import { ErrorText, FormTitle, FormWrapper, InputWraper, Select, StyledLabel, SubmitButton, TextArea } from "../layouts/Theme";
+import { Input } from "../Ui/Input";
+import { ErrorText, FormTitle, FormWrapper, InputWraper, Select, StyledLabel, SubmitButton, TextArea } from "../../layouts/Theme";
 import { useState } from "react";
 // import occupation from "../services/apiOccupation";
-import { CreateOccupationSchema } from "../schemas/CreateOccupationSchema";
-import Checkbox from "./Ui/Checkbox";
-import { MoneyInputFallback } from "./Ui/MoneyInputFallBack";
-import apiOccupation from "../services/apiOccupation";
+import { CreateOccupationSchema } from "../../schemas/CreateOccupationSchema";
+import Checkbox from "../Ui/Checkbox";
+import { MoneyInputFallback } from "../Ui/MoneyInputFallBack";
+import apiOccupation from "../../services/apiOccupation";
 
 export default function CreateOccupation() {
   const [selectedOption, setSelectedOption] = useState("")

@@ -1,11 +1,13 @@
 
-import { zodResolver } from "@hookform/resolvers/zod";
+// import { zodResolver } from "@hookform/resolvers/zod";
 import { ErrorText, FormTitle, FormWrapper, InputWraper, StyledLabel, StyledMaskInput, SubmitButton } from "../layouts/Theme";
 import { useForm, Controller } from "react-hook-form";
-import { Input } from "../components/Ui/Input";
+// import { Input } from "./Ui/Input";
 import contract from "../services/apiContract";
 import { CustomerSchema } from "../schemas/CustomerSchema";
-import { Container } from "../layouts/StyledComponents";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Input } from "./Ui/Input";
+// import { Container } from "../layouts/StyledComponents";
 
 export default function RegisterCustomer() {
 

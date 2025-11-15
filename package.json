@@ -30,6 +30,7 @@
     "react-input-mask": "^2.0.4",
     "react-router-dom": "^7.7.1",
     "react-select": "^5.10.2",
+    "react-signature-canvas": "^1.1.0-alpha.2",
     "styled-components": "^6.1.19",
     "xlsx": "^0.18.5",
     "zod": "^4.0.14"

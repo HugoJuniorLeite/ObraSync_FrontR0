@@ -1,17 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { FormTitle, FormWrapper, InputWraper, RowInput, Select, StyledLabel, SubmitButton } from "../layouts/Theme";
-import { Input } from "./Ui/Input";
+import { FormTitle, FormWrapper, InputWraper, RowInput, Select, StyledLabel, SubmitButton } from "../../layouts/Theme";
+import { Input } from "../Ui/Input";
 // import employee from "../services/apiEmployee";
-import contract from "../services/apiContract";
+import contract from "../../services/apiContract";
 // import occupation from "../services/apiOccupation";
-import { EmployeeSchema, } from "../schemas/EmployeeSchema";
+import { EmployeeSchema, } from "../../schemas/EmployeeSchema";
 
 // import { IMaskInput } from "react-imask";
-import Checkbox from "./Ui/Checkbox";
-import apiEmployee from "../services/apiEmployee";
-import apiOccupation from "../services/apiOccupation";
+import Checkbox from "../Ui/Checkbox";
+import apiEmployee from "../../services/apiEmployee";
+import apiOccupation from "../../services/apiOccupation";
 
 
 export default function RegisterEmployee() {

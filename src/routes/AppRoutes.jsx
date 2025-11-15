@@ -22,8 +22,8 @@ import Project from "../pages/Project";
 
 // Componentes e páginas internas
 import RegisterCustomer from "../components/RegisterCustomer";
-import RegisterEmployee from "../components/RegisterEmployee";
-import CreateOccupation from "../components/CreateOccupation";
+// import RegisterEmployee from "../components/RegisterEmployee";
+// import CreateOccupation from "../components/CreateOccupation";
 import CreateOs from "../components/CreateOs";
 import CreateService from "../components/CreateService";
 import GetOss from "../components/GetOSs";
@@ -38,6 +38,7 @@ import PrincipalPreVgb from "../components/RdoForms/Croqui/PrincipalPreVgb";
 import UnderConstruction from "../pages/UnderConstruction";
 import EmployeeList from "../components/EmployeeList";
 import OccupationList from "../components/OccupationList";
+import AttendanceWizardModal from "../components/RdoForms/AttendanceWizardModal";
 
 
 // Estilo principal
@@ -85,6 +86,7 @@ const roleRoutes = [
       { path: "/requisicoes/epi", element: <UnderConstruction featureName="Requisitar EPI" /> },
       { path: "/checklist/arl", element: <UnderConstruction featureName="ARL" /> },
       { path: "/checklist/frota", element: <UnderConstruction featureName="Check-list Frota" /> },
+          { path: "/rdo/gasista", element: <AttendanceWizardModal featureName="Gasista" /> },
 
 
     ],
@@ -100,9 +102,9 @@ const roleRoutes = [
   {
     allowedRoles: [6, 2, 4, 5],
     routes: [
-      { path: "/funcionarios/cadastrar", element: <RegisterEmployee /> },
+      // { path: "/funcionarios/cadastrar", element: <RegisterEmployee /> },
       { path: "/funcionarios/listar", element: <EmployeeList /> },
-      { path: "/ocupacoes/cadastrar", element: <CreateOccupation /> },
+      // { path: "/ocupacoes/cadastrar", element: <CreateOccupation /> },
       { path: "/ocupacoes/listar", element: <OccupationList />},
 
     ],
