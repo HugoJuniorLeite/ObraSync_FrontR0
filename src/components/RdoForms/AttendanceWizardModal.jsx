@@ -2048,7 +2048,9 @@ const iniciarDeslocamento = async () => {
           headStyles: { fillColor: [30, 60, 110] },
           head: [["OS", "Início", "Fim", "Endereço"]],
           body: jornada.atendimentos.map((att) => [
-            `OS ${att.ordemTipo}-${att.ordemNumero}`,
+att.notaEnviada === "sim"
+  ? `OS ${att.ordemTipo}-${att.ordemNumero}`
+  : "Não informada",
             fmt(att.atendimentoInicio),
             fmt(att.finalizadoEm),
             `${att.endereco?.rua || ""} ${att.endereco?.numero || ""} - ${att.endereco?.bairro || ""
@@ -2088,7 +2090,13 @@ const iniciarDeslocamento = async () => {
 
         addSpace(30);
         pdf.setFont("Helvetica", "bold");
-        pdf.text(`OS ${att.ordemTipo}-${att.ordemNumero}`, margin, y);
+pdf.text(
+  att.notaEnviada === "sim"
+    ? `OS ${att.ordemTipo}-${att.ordemNumero}`
+    : "Não informada",
+  margin,
+  y
+);
         y += 16;
 
         for (const f of att.fotos) {
@@ -2744,7 +2752,7 @@ setStep(3);
       if (a.notaEnviada === "nao") {
         events.push({
           time: a.atendimentoInicio,
-          label: `Nota não enviada na solicitação`,
+          label: `Numero de nota não informado na solicitação`,
         });
       }
 
@@ -3163,7 +3171,7 @@ setStep(3);
   </span>
 ) : (
   <span style={{ color: "#fbbf24" }}>
-    Nota não enviada no momento da solicitação
+    Numero de nota não informado na solicitação
   </span>
 )}
 
