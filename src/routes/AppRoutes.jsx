@@ -39,6 +39,7 @@ import UnderConstruction from "../pages/UnderConstruction";
 import EmployeeList from "../components/EmployeeList";
 import OccupationList from "../components/OccupationList";
 import AttendanceWizardModal from "../components/RdoForms/AttendanceWizardModal";
+import RdoMain from "../components/RDO/GasitaOperacoes/RdoMain";
 
 
 // Estilo principal
@@ -87,6 +88,7 @@ const roleRoutes = [
       { path: "/checklist/arl", element: <UnderConstruction featureName="ARL" /> },
       { path: "/checklist/frota", element: <UnderConstruction featureName="Check-list Frota" /> },
           { path: "/rdo/gasista", element: <AttendanceWizardModal featureName="Gasista" /> },
+          // { path: "/rdo/gasista", element: <RdoMain featureName="Gasista" /> },
 
 
     ],
