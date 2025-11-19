@@ -1308,7 +1308,13 @@ export default function AttendanceWizardModal({ onClose }) {
 
 
   const [confirmAlmocoEarlyOpen, setConfirmAlmocoEarlyOpen] = useState(false);
-const [tempoAlmocoAtual, setTempoAlmocoAtual] = useState(0);
+  const [tempoAlmocoAtual, setTempoAlmocoAtual] = useState(0);
+
+
+  const [notaEnviada, setNotaEnviada] = useState(null); // null, "sim", "nao"
+  // const [prefixoNota, setPrefixoNota] = useState("");
+  // const [numeroNota, setNumeroNota] = useState("");
+
 
   // função de suspender almoço 
 
@@ -1469,11 +1475,11 @@ const [tempoAlmocoAtual, setTempoAlmocoAtual] = useState(0);
 
   /* ========== Hepers duração almoço ========== */
   const duracaoAlmocoMs = (al) => {
-  if (!al.inicio || !al.fim) return 0;
-  return new Date(al.fim) - new Date(al.inicio);
-};
+    if (!al.inicio || !al.fim) return 0;
+    return new Date(al.fim) - new Date(al.inicio);
+  };
 
-const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
+  const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
 
 
   /* ========== CEP lookup (viacep) ========== */
@@ -1518,29 +1524,35 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
   /* ================== PARTE 2 — Fluxo de passos (Steps 1..9) ================== */
 
   /* ====== Core flow: deslocamento / atendimento / concluir ====== */
-  const iniciarDeslocamento = async () => {
+const iniciarDeslocamento = async () => {
+  // Só valida OS se a nota foi informada (SIM)
+  if (notaEnviada === "sim") {
     if (!/^\d{6}$/.test(current.ordemNumero)) {
       alert("Informe o número da OS com 6 dígitos antes de iniciar deslocamento.");
       setStep(2);
       return;
     }
-    const loc = await getLocation();
-    setCurrent(cur => {
-      if (!cur.deslocamentoInicio) {
-        const updated = {
-          ...cur,
-          deslocamentoInicio: nowISO(),
-          gpsInicio: { lat: loc?.lat || "", lng: loc?.lng || "" }
-        };
-        setJornada(j => ({ ...j, inicioExpediente: j.inicioExpediente || nowISO() }));
-        return updated;
-      }
-      return cur;
-    });
+  }
 
-    // Depois de iniciar deslocamento → vai para Step 5 (dados do deslocamento)
-    setStep(5);
-  };
+  const loc = await getLocation();
+
+  setCurrent(cur => {
+    if (!cur.deslocamentoInicio) {
+      const updated = {
+        ...cur,
+        deslocamentoInicio: nowISO(),
+        gpsInicio: { lat: loc?.lat || "", lng: loc?.lng || "" }
+      };
+      setJornada(j => ({ ...j, inicioExpediente: j.inicioExpediente || nowISO() }));
+      return updated;
+    }
+    return cur;
+  });
+
+  setStep(5);
+};
+
+
 
   const iniciarAtendimento = async () => {
     const loc = await getLocation();
@@ -2207,42 +2219,84 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
       exit={{ x: -20, opacity: 0 }}
       transition={{ duration: 0.24 }}
     >
-      <Field>
-        <Label>Prefixo / Tipo da OS</Label>
+      {/* ===================== PERGUNTA SOBRE NOTA ===================== */}
 
-        {current.tipo === "interno" ? (
-          <Input readOnly value={current.ordemPrefixo} />
-        ) : (
-          <Select
-            value={current.ordemTipo}
-            onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
+      <Field>
+        <Label>Número da nota foi enviado?</Label>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          <BigBtn
+            style={{
+              flex: 1,
+              background: notaEnviada === "sim" ? "#38bdf8" : "#0d2234",
+              borderColor: notaEnviada === "sim" ? "#38bdf8" : "#00396b"
+            }}
+            onClick={() => setNotaEnviada("sim")}
           >
-            <option value="3">3</option>
-            <option value="7">7</option>
-            <option value="100000">100000</option>
-          </Select>
-        )}
-      </Field>
+            Sim
+          </BigBtn>
 
-      <Field>
-        <Label>Número da OS (6 dígitos)</Label>
-
-        <Input
-          inputMode="numeric"
-          placeholder="000000"
-          value={current.ordemNumero}
-          onChange={(e) =>
-            updateCurrentField(
-              "ordemNumero",
-              e.target.value.replace(/\D/g, "").slice(0, 6)
-            )
-          }
-        />
+          <BigBtn
+            style={{
+              flex: 1,
+              background: notaEnviada === "nao" ? "#38bdf8" : "#0d2234",
+              borderColor: notaEnviada === "nao" ? "#38bdf8" : "#00396b"
+            }}
+            onClick={() => setNotaEnviada("nao")}
+          >
+            Não
+          </BigBtn>
+        </div>
 
         <div style={{ color: "#94a3b8", marginTop: 6 }}>
-          Obrigatório — não avança enquanto não tiver 6 dígitos.
+          Escolha uma opção para continuar.
         </div>
       </Field>
+
+      {/* ===================== CAMPOS SOMENTE SE “SIM” ===================== */}
+
+      {notaEnviada === "sim" && (
+        <>
+          <Field>
+            <Label>Prefixo / Tipo da OS</Label>
+
+            {current.tipo === "interno" ? (
+              <Input readOnly value={current.ordemPrefixo} />
+            ) : (
+              <Select
+                value={current.ordemTipo}
+                onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
+              >
+                <option value="3">3</option>
+                <option value="7">7</option>
+                <option value="100000">100000</option>
+              </Select>
+            )}
+          </Field>
+
+          <Field>
+            <Label>Número da OS (6 dígitos)</Label>
+
+            <Input
+              inputMode="numeric"
+              placeholder="000000"
+              value={current.ordemNumero}
+              onChange={(e) =>
+                updateCurrentField(
+                  "ordemNumero",
+                  e.target.value.replace(/\D/g, "").slice(0, 6)
+                )
+              }
+            />
+
+            <div style={{ color: "#94a3b8", marginTop: 6 }}>
+              Obrigatório — não avança enquanto não tiver 6 dígitos.
+            </div>
+          </Field>
+        </>
+      )}
+
+      {/* ===================== BOTÕES ===================== */}
 
       <div style={{ display: "flex", gap: 8 }}>
         <BigBtn onClick={() => setStep(1)}>
@@ -2252,11 +2306,18 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
         <BigBtn
           $primary
           onClick={() => {
-            if (!/^\d{6}$/.test(current.ordemNumero)) {
-              alert("Preencha 6 dígitos da OS antes de avançar.");
-              return;
+            // SE RESPONDEU SIM → valida prefixo e número
+            if (notaEnviada === "sim") {
+              if (!/^\d{6}$/.test(current.ordemNumero)) {
+                alert("Preencha 6 dígitos da OS antes de avançar.");
+                return;
+              }
             }
-            setStep(3);
+
+            // SE RESPONDEU NÃO → ignora validação
+        setCurrent(c => ({ ...c, notaEnviada }));
+setStep(3);
+
           }}
         >
           Próximo <ChevronRight size={18} />
@@ -2264,6 +2325,7 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
       </div>
     </motion.div>
   );
+
 
   /* ================== Step 3: Endereço ================== */
   const Step3_Endereco = (
@@ -2378,7 +2440,7 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
           <div style={{ fontWeight: 700 }}>Resumo</div>
 
           <div style={{ color: "#9fb4c9", marginTop: 6 }}>
-            Ordem: {current.ordemTipo}-{current.ordemNumero || "—"} <br />
+             Ordem: {notaEnviada ? `${current.ordemTipo}-${current.ordemNumero || "—"}` : "Não informada"} <br />
             Endereço: {current.endereco.rua || "—"} {current.endereco.numero || ""} —{" "}
             {current.endereco.bairro || ""} — {current.endereco.cidade || ""}
           </div>
@@ -2679,6 +2741,21 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
           label: `Início atendimento ${i + 1}`,
         });
 
+      if (a.notaEnviada === "nao") {
+        events.push({
+          time: a.atendimentoInicio,
+          label: `Nota não enviada na solicitação`,
+        });
+      }
+
+      if (a.notaEnviada === "sim") {
+        events.push({
+          time: a.atendimentoInicio,
+          label: `OS informada: ${a.ordemTipo}-${a.ordemNumero}`,
+        });
+      }
+
+
       if (a.finalizadoEm)
         events.push({
           time: a.finalizadoEm,
@@ -2970,29 +3047,29 @@ const MIN_ALMOCO_MS = 50 * 60 * 1000; // 50 minutos
     }));
   };
 
-const finalizarAlmoco = async () => {
-  const loc = await getLocation();
+  const finalizarAlmoco = async () => {
+    const loc = await getLocation();
 
-  setJornada(j => {
-    const almocos = [...j.almocos];
-    const ultimo = almocos[almocos.length - 1];
+    setJornada(j => {
+      const almocos = [...j.almocos];
+      const ultimo = almocos[almocos.length - 1];
 
-    if (!ultimo || ultimo.fim || ultimo.suspensoEm) return j;
+      if (!ultimo || ultimo.fim || ultimo.suspensoEm) return j;
 
-    // finaliza almoço
-    ultimo.fim = nowISO();
-    ultimo.latFim = loc?.lat || "";
-    ultimo.lngFim = loc?.lng || "";
+      // finaliza almoço
+      ultimo.fim = nowISO();
+      ultimo.latFim = loc?.lat || "";
+      ultimo.lngFim = loc?.lng || "";
 
-    // calcula duração
-    const duracao = duracaoAlmocoMs(ultimo);
+      // calcula duração
+      const duracao = duracaoAlmocoMs(ultimo);
 
-    // registra flag (para RDO)
-    ultimo.almoçoInvalido = duracao < MIN_ALMOCO_MS;
+      // registra flag (para RDO)
+      ultimo.almoçoInvalido = duracao < MIN_ALMOCO_MS;
 
-    return { ...j, almocos };
-  });
-};
+      return { ...j, almocos };
+    });
+  };
 
 
 
@@ -3019,46 +3096,46 @@ const finalizarAlmoco = async () => {
           <strong>Registro de Almoço</strong>
           <br />
 
-       {jornada.almocos.map((al, i) => (
-  <Card key={al.id} style={{ marginTop: 12 }}>
-    <strong>Almoço {i + 1}</strong><br/>
+          {jornada.almocos.map((al, i) => (
+            <Card key={al.id} style={{ marginTop: 12 }}>
+              <strong>Almoço {i + 1}</strong><br />
 
-    {al.inicio && (
-      <>
-        <strong>Início:</strong> {fmt(al.inicio)}<br/>
-        <span style={{ color: "#60a5fa" }}>
-          GPS: {al.latInicio}, {al.lngInicio}
-        </span><br/>
-      </>
-    )}
+              {al.inicio && (
+                <>
+                  <strong>Início:</strong> {fmt(al.inicio)}<br />
+                  <span style={{ color: "#60a5fa" }}>
+                    GPS: {al.latInicio}, {al.lngInicio}
+                  </span><br />
+                </>
+              )}
 
-    {al.fim && (
-      <>
-        <strong>Fim:</strong> {fmt(al.fim)}<br/>
-        <span style={{ color: "#34d399" }}>
-          GPS: {al.latFim}, {al.lngFim}
-        </span><br/>
-      </>
-    )}
+              {al.fim && (
+                <>
+                  <strong>Fim:</strong> {fmt(al.fim)}<br />
+                  <span style={{ color: "#34d399" }}>
+                    GPS: {al.latFim}, {al.lngFim}
+                  </span><br />
+                </>
+              )}
 
-    {al.suspensoEm && (
-      <>
-        <br/>
-        <strong>Suspenso em:</strong> {fmt(al.suspensoEm)}<br/>
-        <strong>Solicitante:</strong> {al.solicitanteSuspensao}<br/>
-        <strong>Justificativa:</strong> {al.justificativaSuspensao}
-      </>
-    )}
+              {al.suspensoEm && (
+                <>
+                  <br />
+                  <strong>Suspenso em:</strong> {fmt(al.suspensoEm)}<br />
+                  <strong>Solicitante:</strong> {al.solicitanteSuspensao}<br />
+                  <strong>Justificativa:</strong> {al.justificativaSuspensao}
+                </>
+              )}
 
-    {/* ⚠ ALERTA DE ALMOÇO INVÁLIDO (MENOS DE 50 MIN) */}
-    {al.almoçoInvalido && (
-      <div style={{ color: "#f87171", marginTop: 6, fontWeight: "bold" }}>
-        ⚠ Almoço abaixo do tempo mínimo (50 min)
-      </div>
-    )}
+              {/* ⚠ ALERTA DE ALMOÇO INVÁLIDO (MENOS DE 50 MIN) */}
+              {al.almoçoInvalido && (
+                <div style={{ color: "#f87171", marginTop: 6, fontWeight: "bold" }}>
+                  ⚠ Almoço abaixo do tempo mínimo (50 min)
+                </div>
+              )}
 
-  </Card>
-))}
+            </Card>
+          ))}
 
 
         </Card>
@@ -3078,9 +3155,18 @@ const finalizarAlmoco = async () => {
             key={att.id}
             style={{ marginTop: 8, border: "1px solid #00396b" }}
           >
-            <strong>
-              OS {att.ordemTipo}{att.ordemNumero}
-            </strong>
+          <strong>OS / Nota</strong><br/>
+
+{att.notaEnviada === "sim" ? (
+  <span>
+    {att.ordemTipo}-{att.ordemNumero}
+  </span>
+) : (
+  <span style={{ color: "#fbbf24" }}>
+    Nota não enviada no momento da solicitação
+  </span>
+)}
+
             <br />
             {att.endereco?.rua || "—"} {att.endereco?.numero || ""} —{" "}
             {att.endereco?.bairro || ""} — {att.endereco?.cidade || ""}
@@ -3230,66 +3316,66 @@ const finalizarAlmoco = async () => {
           >
 
 
-    {/* =========== CONTROLES DE ALMOÇO =========== */}
-    {(() => {
-      const ultimo = jornada.almocos[jornada.almocos.length - 1];
+            {/* =========== CONTROLES DE ALMOÇO =========== */}
+            {(() => {
+              const ultimo = jornada.almocos[jornada.almocos.length - 1];
 
-      const existeAlmocoValido = jornada.almocos.some(a => {
-        if (!a.fim) return false;
-        return duracaoAlmocoMs(a) >= MIN_ALMOCO_MS;
-      });
+              const existeAlmocoValido = jornada.almocos.some(a => {
+                if (!a.fim) return false;
+                return duracaoAlmocoMs(a) >= MIN_ALMOCO_MS;
+              });
 
-      const emCurso = ultimo && ultimo.inicio && !ultimo.fim && !ultimo.suspensoEm;
-      const podeIniciarAlmoco = !emCurso && !existeAlmocoValido;
+              const emCurso = ultimo && ultimo.inicio && !ultimo.fim && !ultimo.suspensoEm;
+              const podeIniciarAlmoco = !emCurso && !existeAlmocoValido;
 
-      return (
-        <>
-          {podeIniciarAlmoco && (
-            <BigBtn $primary onClick={iniciarAlmoco}>
-              Iniciar Almoço
-            </BigBtn>
-          )}
+              return (
+                <>
+                  {podeIniciarAlmoco && (
+                    <BigBtn $primary onClick={iniciarAlmoco}>
+                      Iniciar Almoço
+                    </BigBtn>
+                  )}
 
-          {emCurso && (
-            <div style={{ display: "flex", gap: 8 }}>
-         <BigBtn
-  style={{ flex: 1, background: "#0ea5e9", borderColor: "#0ea5e9" }}
-  onClick={async () => {
-    const ultimo = jornada.almocos[jornada.almocos.length - 1];
-    if (!ultimo?.inicio) return;
+                  {emCurso && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <BigBtn
+                        style={{ flex: 1, background: "#0ea5e9", borderColor: "#0ea5e9" }}
+                        onClick={async () => {
+                          const ultimo = jornada.almocos[jornada.almocos.length - 1];
+                          if (!ultimo?.inicio) return;
 
-    const diff = Date.now() - new Date(ultimo.inicio).getTime();
-    setTempoAlmocoAtual(diff);
+                          const diff = Date.now() - new Date(ultimo.inicio).getTime();
+                          setTempoAlmocoAtual(diff);
 
-    if (diff < MIN_ALMOCO_MS) {
-      setConfirmAlmocoEarlyOpen(true); // << ABRE O MODAL
-    } else {
-      finalizarAlmoco();
-    }
-  }}
->
-  Finalizar Almoço
-</BigBtn>
+                          if (diff < MIN_ALMOCO_MS) {
+                            setConfirmAlmocoEarlyOpen(true); // << ABRE O MODAL
+                          } else {
+                            finalizarAlmoco();
+                          }
+                        }}
+                      >
+                        Finalizar Almoço
+                      </BigBtn>
 
-              <BigBtn
-                style={{
-                  flex: 1,
-                  background: "#fbbf24",
-                  borderColor: "#f59e0b",
-                  color: "#082f49",
-                }}
-                onClick={() => setSuspenderAlmocoOpen(true)}
-              >
-                Suspender Almoço
-              </BigBtn>
-            </div>
-          )}
-        </>
-      );
-    })()}
+                      <BigBtn
+                        style={{
+                          flex: 1,
+                          background: "#fbbf24",
+                          borderColor: "#f59e0b",
+                          color: "#082f49",
+                        }}
+                        onClick={() => setSuspenderAlmocoOpen(true)}
+                      >
+                        Suspender Almoço
+                      </BigBtn>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
-    </div>
-)}
+          </div>
+        )}
 
 
         {/* MODAL SUSPENDER ALMOÇO */}
@@ -3343,60 +3429,60 @@ const finalizarAlmoco = async () => {
           )
         }
 
-      
-{confirmAlmocoEarlyOpen && (
-  <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmAlmocoEarlyOpen(false)}>
-    <Panel
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: .22 }}
-    >
-      <Body>
 
-        <h3 style={{ color: "#f59e0b", marginBottom: 10 }}>
-          Finalizar almoço antes dos 50 minutos?
-        </h3>
+        {confirmAlmocoEarlyOpen && (
+          <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmAlmocoEarlyOpen(false)}>
+            <Panel
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: .22 }}
+            >
+              <Body>
 
-        <div style={{ color: "#cbd5e1", marginBottom: 12 }}>
-          O tempo mínimo recomendado é <strong>50 minutos</strong>.<br/>
-          Você registrou apenas{" "}
-          <strong>{Math.round(tempoAlmocoAtual / 60000)} min</strong>.
-        </div>
+                <h3 style={{ color: "#f59e0b", marginBottom: 10 }}>
+                  Finalizar almoço antes dos 50 minutos?
+                </h3>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <BigBtn onClick={() => setConfirmAlmocoEarlyOpen(false)}>
-            Cancelar
-          </BigBtn>
+                <div style={{ color: "#cbd5e1", marginBottom: 12 }}>
+                  O tempo mínimo recomendado é <strong>50 minutos</strong>.<br />
+                  Você registrou apenas{" "}
+                  <strong>{Math.round(tempoAlmocoAtual / 60000)} min</strong>.
+                </div>
 
-     <BigBtn
-  $primary
-  onClick={() => {
-    // fecha modal antes de tudo
-    setConfirmAlmocoEarlyOpen(false);
+                <div style={{ display: "flex", gap: 10 }}>
+                  <BigBtn onClick={() => setConfirmAlmocoEarlyOpen(false)}>
+                    Cancelar
+                  </BigBtn>
 
-    // usa callback da atualização de estado para garantir render correto
-    setJornada(j => {
-      const almocos = [...j.almocos];
-      const ultimo = almocos[almocos.length - 1];
-      if (ultimo) {
-        ultimo.almoçoInvalido = true;
-        ultimo.fim = nowISO(); // <- garantir que o fim seja registrado aqui
-      }
-      return { ...j, almocos };
-    });
+                  <BigBtn
+                    $primary
+                    onClick={() => {
+                      // fecha modal antes de tudo
+                      setConfirmAlmocoEarlyOpen(false);
 
-    // garante que o fluxo do almoço encerra normalmente
-    finalizarAlmoco();
-  }}
->
-  Finalizar mesmo assim
-</BigBtn>
-        </div>
+                      // usa callback da atualização de estado para garantir render correto
+                      setJornada(j => {
+                        const almocos = [...j.almocos];
+                        const ultimo = almocos[almocos.length - 1];
+                        if (ultimo) {
+                          ultimo.almoçoInvalido = true;
+                          ultimo.fim = nowISO(); // <- garantir que o fim seja registrado aqui
+                        }
+                        return { ...j, almocos };
+                      });
 
-      </Body>
-    </Panel>
-  </Overlay>
-)}
+                      // garante que o fluxo do almoço encerra normalmente
+                      finalizarAlmoco();
+                    }}
+                  >
+                    Finalizar mesmo assim
+                  </BigBtn>
+                </div>
+
+              </Body>
+            </Panel>
+          </Overlay>
+        )}
 
         <Body>
 
