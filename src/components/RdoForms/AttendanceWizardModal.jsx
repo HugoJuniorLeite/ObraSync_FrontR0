@@ -1370,9 +1370,14 @@ export default function AttendanceWizardModal({ onClose }) {
     finalizadoEm: "",
     gpsInicio: { lat: "", lng: "" },
     gpsChegada: { lat: "", lng: "" },
+    comentario: "",
     fotos: [],
-    notas: ""
+    notas: "",
+    rota: []   // lista de pontos GPS reais capturados
   }));
+
+  // === ROTA REAL (Nível 2 — Opção 3) === //
+  const [gpsWatcherId, setGpsWatcherId] = useState(null);
 
 
   const ultimoAlmoco = jornada.almocos[jornada.almocos.length - 1];
@@ -1389,6 +1394,12 @@ export default function AttendanceWizardModal({ onClose }) {
   // interrupt retorno UI (used later)
   const [interromperReasonOpen, setInterromperReasonOpen] = useState(false);
   const [interromperReasonText, setInterromperReasonText] = useState("");
+
+
+  // Step 6 — Campos opcionais
+  const [querComentario, setQuerComentario] = useState(null); // "sim" | "nao"
+  const [querFotos, setQuerFotos] = useState(null); // "sim" | "nao"
+
 
   useEffect(() => {
     try { setSavedJourneys(JSON.parse(localStorage.getItem(SAVED_KEY) || "[]")); } catch { }
@@ -1419,14 +1430,51 @@ export default function AttendanceWizardModal({ onClose }) {
     finalizadoEm: "",
     gpsInicio: { lat: "", lng: "" },
     gpsChegada: { lat: "", lng: "" },
+    comentario: "",
     fotos: [],
-    notas: ""
+    notas: "",
+    rota: []   // lista de pontos GPS reais capturados
   });
+
+  const registrarPontoRota = async (pos) => {
+    const novoPonto = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      time: nowISO(),
+    };
+
+    setCurrent((c) => {
+      const rota = c.rota || [];
+
+      // Se for o primeiro ponto, salva direto
+      if (rota.length === 0) {
+        return { ...c, rota: [novoPonto] };
+      }
+
+      const ultimo = rota[rota.length - 1];
+      const dist = haversine(
+        { lat: ultimo.lat, lng: ultimo.lng },
+        { lat: novoPonto.lat, lng: novoPonto.lng }
+      );
+
+      // Só registra se moveu >= 50m
+      if (dist >= 50) {
+        return { ...c, rota: [...rota, novoPonto] };
+      }
+
+      return c;
+    });
+  };
+
+
+
 
   const startNewAtendimento = (tipo = "externo") => {
     const att = newAtendimentoTemplate(tipo);
 
     setNotaEnviada(null);   // << RESET TOTAL
+    setQuerComentario(null);   // << ZERA
+    setQuerFotos(null);
     setCurrent(att);
     setFotosPreview([]);
     setStep(1);
@@ -1584,6 +1632,16 @@ export default function AttendanceWizardModal({ onClose }) {
 
     const loc = await getLocation();
 
+    // Ligar GPS Watcher
+    const watcher = navigator.geolocation.watchPosition(
+      (pos) => registrarPontoRota(pos),
+      () => { },
+      { enableHighAccuracy: true, maximumAge: 8000, timeout: 10000 }
+    );
+
+    setGpsWatcherId(watcher);
+
+
     setCurrent(cur => {
       if (!cur.deslocamentoInicio) {
         const updated = {
@@ -1608,6 +1666,13 @@ export default function AttendanceWizardModal({ onClose }) {
       return;
     }
 
+    // Parar GPS Watcher do deslocamento
+    if (gpsWatcherId) {
+      navigator.geolocation.clearWatch(gpsWatcherId);
+      setGpsWatcherId(null);
+    }
+
+
     const loc = await getLocation();
     setCurrent(cur => {
       if (!cur.atendimentoInicio) {
@@ -1618,6 +1683,7 @@ export default function AttendanceWizardModal({ onClose }) {
 
         return {
           ...cur,
+          rota: cur.rota || [],
           atendimentoInicio: nowISO(),
           gpsInicio: gpsStart,
         };
@@ -1634,6 +1700,24 @@ export default function AttendanceWizardModal({ onClose }) {
       alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
       return;
     }
+
+    if (querComentario === null || querFotos === null) {
+      alert("Responda todas as perguntas antes de finalizar o atendimento.");
+      return;
+    }
+
+    // VALIDAR FOTO
+    if (querFotos === "sim" && (!current.fotos || current.fotos.length === 0)) {
+      alert("Insira a foto antes de finalizar o atendimento.");
+      return;
+    }
+
+    // VALIDAR COMENTÁRIO
+    if (querComentario === "sim" && (!current.comentario || current.comentario.trim() === "")) {
+      alert("Insira o comentário antes de finalizar o atendimento.");
+      return;
+    }
+
 
     const loc = await getLocation();
 
@@ -2661,54 +2745,220 @@ export default function AttendanceWizardModal({ onClose }) {
     </motion.div>
   );
 
+ /* ================== Step 6: Atendimento em andamento ================== */
+const Step6_AtendimentoAtivo = (
+  <motion.div
+    key="s6"
+    initial={{ x: 20, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    exit={{ x: -20, opacity: 0 }}
+    transition={{ duration: 0.24 }}
+  >
+    {/* BLOQUEIO ALMOÇO */}
+    {current.pausadoParaAlmoco && (
+      <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+        <strong style={{ color: "#f59e0b" }}>
+          Atendimento pausado para almoço
+        </strong>
+        <br />
+        Finalize o almoço para continuar.
+      </Card>
+    )}
 
-  /* ================== Step 6: Atendimento em andamento ================== */
-  const Step6_AtendimentoAtivo = (
-    <motion.div
-      key="s6"
-      initial={{ x: 20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -20, opacity: 0 }}
-      transition={{ duration: 0.24 }}
-    >
-      {/* 🔥 BLOQUEIO SE ESTIVER PAUSADO PARA ALMOÇO */}
-      {current.pausadoParaAlmoco && (
-        <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
-          <strong style={{ color: "#f59e0b" }}>
-            Atendimento pausado para almoço
+    {!current.pausadoParaAlmoco && (
+      <Field>
+        <Label>Atendimento</Label>
+
+        <div style={{ color: "#9fb4c9", marginBottom: 12 }}>
+          Responda as perguntas antes de finalizar o atendimento.
+        </div>
+
+        {/* ============================================================
+           PERGUNTA 1 — COMENTÁRIO
+        ============================================================ */}
+        <Card style={{ marginTop: 10, padding: 12 }}>
+          <strong style={{ color: "#dbeafe" }}>
+            Deseja inserir um comentário?
           </strong>
-          <br />
-          Finalize o almoço para continuar.
-        </Card>
-      )}
-
-      {/* Se está pausado → não renderiza o restante do Step 6 */}
-      {current.pausadoParaAlmoco ? null : (
-        <Field>
-          <Label>Atendimento</Label>
-
-          <div style={{ color: "#9fb4c9" }}>
-            Use os botões para finalizar o atendimento.
-          </div>
-
-          <Card style={{ marginTop: 10 }}>
-            <div style={{ fontWeight: 700 }}>Status</div>
-            <div style={{ marginTop: 6, color: "#9fb4c9" }}>
-              Deslocamento: {fmt(current.deslocamentoInicio)} <br />
-              Início atendimento: {fmt(current.atendimentoInicio)} <br />
-              Finalizado: {fmt(current.finalizadoEm)}
-            </div>
-          </Card>
 
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <BigBtn $primary onClick={concluirAtendimento}>
-              Finalizar atendimento
+            <BigBtn
+              style={{
+                flex: 1,
+                background:
+                  querComentario === "sim" ? "#38bdf8" : "transparent",
+                borderColor:
+                  querComentario === "sim" ? "#38bdf8" : "#1e3a8a",
+                color: querComentario === "sim" ? "#082f49" : "#dbeafe",
+              }}
+              onClick={() => setQuerComentario("sim")}
+            >
+              Sim
+            </BigBtn>
+
+            <BigBtn
+              style={{
+                flex: 1,
+                background:
+                  querComentario === "nao" ? "#38bdf8" : "transparent",
+                borderColor:
+                  querComentario === "nao" ? "#38bdf8" : "#1e3a8a",
+                color: querComentario === "nao" ? "#082f49" : "#dbeafe",
+              }}
+              onClick={() => {
+                setQuerComentario("nao");
+                updateCurrentField("comentario", "");
+              }}
+            >
+              Não
             </BigBtn>
           </div>
-        </Field>
-      )}
-    </motion.div>
-  );
+
+          {querComentario === "sim" && (
+            <textarea
+              value={current.comentario || ""}
+              onChange={(e) => updateCurrentField("comentario", e.target.value)}
+              placeholder="Digite seu comentário..."
+              style={{
+                width: "100%",
+                minHeight: 100,
+                marginTop: 14,
+                padding: 12,
+                background: "#0a1a2a",
+                color: "#e5f0ff",
+                border: "1px solid #1e3a8a",
+                borderRadius: 10,
+                fontSize: "1rem",
+                outline: "none",
+              }}
+            />
+          )}
+        </Card>
+
+        {/* ============================================================
+           PERGUNTA 2 — FOTOS
+        ============================================================ */}
+        <Card style={{ marginTop: 14, padding: 12 }}>
+          <strong style={{ color: "#dbeafe" }}>Deseja incluir fotos?</strong>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <BigBtn
+              style={{
+                flex: 1,
+                background: querFotos === "sim" ? "#38bdf8" : "transparent",
+                borderColor: querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
+                color: querFotos === "sim" ? "#082f49" : "#dbeafe",
+              }}
+              onClick={() => setQuerFotos("sim")}
+            >
+              Sim
+            </BigBtn>
+
+            <BigBtn
+              style={{
+                flex: 1,
+                background: querFotos === "nao" ? "#38bdf8" : "transparent",
+                borderColor: querFotos === "nao" ? "#38bdf8" : "#1e3a8a",
+                color: querFotos === "nao" ? "#082f49" : "#dbeafe",
+              }}
+              onClick={() => {
+                setQuerFotos("nao");
+                updateCurrentField("fotos", []);
+                setFotosPreview([]);
+              }}
+            >
+              Não
+            </BigBtn>
+          </div>
+
+          {querFotos === "sim" && (
+            <div style={{ marginTop: 16 }}>
+              {/* Botão estilizado */}
+              <label
+                style={{
+                  display: "inline-block",
+                  background: "#0ea5e9",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  color: "#082f49",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Tirar / Selecionar fotos
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    const arr = files.map((f) => ({
+                      file: f,
+                      url: URL.createObjectURL(f),
+                    }));
+
+                    updateCurrentField("fotos", arr);
+                    setFotosPreview(arr);
+                  }}
+                />
+              </label>
+
+              {/* Prévia das fotos */}
+              {fotosPreview.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
+                  {fotosPreview.map((f, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: 82,
+                        height: 82,
+                        borderRadius: 10,
+                        overflow: "hidden",
+                        border: "1px solid #1e3a8a",
+                      }}
+                    >
+                      <img
+                        src={f.url}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* ============================================================
+           FINALIZAR ATENDIMENTO
+        ============================================================ */}
+        <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+          <BigBtn
+            $primary
+            onClick={concluirAtendimento}
+            style={{ width: "100%" }}
+          >
+            Finalizar atendimento
+          </BigBtn>
+        </div>
+      </Field>
+    )}
+  </motion.div>
+);
 
 
   /* ================== Step 7: Atendimento concluído ================== */
@@ -3130,25 +3380,31 @@ export default function AttendanceWizardModal({ onClose }) {
   };
 
   const calcularDistanciaTotal = () => {
-    const points = [];
-
-    jornada.atendimentos.forEach((a) => {
-      if (a.gpsInicio?.lat) points.push(a.gpsInicio);
-      if (a.gpsChegada?.lat) points.push(a.gpsChegada);
-    });
-
-    jornada.baseLogs.forEach((b) => {
-      if (b.gps?.lat) points.push(b.gps);
-    });
-
-    if (points.length < 2) return 0;
-
     let tot = 0;
-    for (let i = 1; i < points.length; i++)
-      tot += haversine(points[i - 1], points[i]);
+
+    // 1) Deslocamentos reais dos atendimentos (rota real)
+    jornada.atendimentos.forEach((a) => {
+      if (a.rota && a.rota.length > 1) {
+        for (let i = 1; i < a.rota.length; i++) {
+          tot += haversine(a.rota[i - 1], a.rota[i]);
+        }
+      }
+    });
+
+    // 2) Deslocamentos de retorno à base (baseLogs)
+    const logs = jornada.baseLogs;
+    for (let i = 1; i < logs.length; i++) {
+      const p1 = logs[i - 1].gps;
+      const p2 = logs[i].gps;
+
+      if (p1 && p2 && p1.lat && p2.lat) {
+        tot += haversine(p1, p2);
+      }
+    }
 
     return Math.round(tot);
   };
+
 
   const PainelView = (() => {
     const { atendimentoMs, deslocamentoMs } = calcularTotais();
