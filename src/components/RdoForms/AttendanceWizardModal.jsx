@@ -1315,6 +1315,7 @@ export default function AttendanceWizardModal({ onClose }) {
   // const [prefixoNota, setPrefixoNota] = useState("");
   // const [numeroNota, setNumeroNota] = useState("");
 
+  const [confirmPauseForLunchOpen, setConfirmPauseForLunchOpen] = useState(false);
 
   // função de suspender almoço 
 
@@ -1407,8 +1408,10 @@ export default function AttendanceWizardModal({ onClose }) {
   const newAtendimentoTemplate = (tipo = "externo") => ({
     id: crypto.randomUUID(),
     tipo,
-    ordemTipo: tipo === "externo" ? "3" : "100000",
-    ordemPrefixo: "100000",
+    pausadoParaAlmoco: false,
+    stepAntesAlmoco: null,
+    ordemTipo: tipo === "externo" ? "" : "100000",
+    ordemPrefixo: "",
     ordemNumero: "",
     endereco: { cep: "", rua: "", numero: "", bairro: "", cidade: "", estado: "" },
     deslocamentoInicio: "",
@@ -1422,11 +1425,14 @@ export default function AttendanceWizardModal({ onClose }) {
 
   const startNewAtendimento = (tipo = "externo") => {
     const att = newAtendimentoTemplate(tipo);
+
+    setNotaEnviada(null);   // << RESET TOTAL
     setCurrent(att);
     setFotosPreview([]);
-    setStep(1); // go to Step 1 (Tipo) immediately as requested after jornada started
+    setStep(1);
     setAnimKey(k => k + 1);
   };
+
 
   // if component mounted and jornada already started -> go to step 1, else pre-check (0)
   // useEffect(() => {
@@ -1520,41 +1526,88 @@ export default function AttendanceWizardModal({ onClose }) {
     setStep(1);
   };
 
+// ====================BLOQUEIA INICIAR DUAS JORNADAS NO MESMO DIA =================
+//   const iniciarJornada = async () => {
+//   const hoje = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+//   // Carrega jornadas finalizadas
+//   let stored = [];
+//   try {
+//     stored = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+//   } catch {}
+
+//   // Verifica se já existe jornada do mesmo dia
+//   const existeJornadaHoje = stored.some(j => j.date === hoje);
+
+//   if (existeJornadaHoje) {
+//     alert("Você já finalizou uma jornada neste dia. Não é permitido iniciar outra.");
+//     return;
+//   }
+
+//   // Verifica se jornada atual já está iniciada mas não finalizada (fail-safe)
+//   if (jornada.inicioExpediente && !jornada.fimExpediente) {
+//     alert("Você já possui uma jornada em andamento. Finalize antes de iniciar outra.");
+//     return;
+//   }
+
+//   // Agora pode iniciar
+//   const loc = await getLocation();
+//   setJornada(j => ({
+//     ...j,
+//     inicioExpediente: nowISO(),
+//     expedienteGps: { lat: loc?.lat || "", lng: loc?.lng || "" }
+//   }));
+
+//   startNewAtendimento("externo");
+//   setStep(1);
+// };
+
 
   /* ================== PARTE 2 — Fluxo de passos (Steps 1..9) ================== */
 
   /* ====== Core flow: deslocamento / atendimento / concluir ====== */
-const iniciarDeslocamento = async () => {
-  // Só valida OS se a nota foi informada (SIM)
-  if (notaEnviada === "sim") {
-    if (!/^\d{6}$/.test(current.ordemNumero)) {
-      alert("Informe o número da OS com 6 dígitos antes de iniciar deslocamento.");
-      setStep(2);
+  const iniciarDeslocamento = async () => {
+
+    if (current.pausadoParaAlmoco) {
+      alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
       return;
     }
-  }
 
-  const loc = await getLocation();
-
-  setCurrent(cur => {
-    if (!cur.deslocamentoInicio) {
-      const updated = {
-        ...cur,
-        deslocamentoInicio: nowISO(),
-        gpsInicio: { lat: loc?.lat || "", lng: loc?.lng || "" }
-      };
-      setJornada(j => ({ ...j, inicioExpediente: j.inicioExpediente || nowISO() }));
-      return updated;
+    // Só valida OS se a nota foi informada (SIM)
+    if (notaEnviada === "sim") {
+      if (!/^\d{6}$/.test(current.ordemNumero)) {
+        alert("Informe o número da OS com 6 dígitos antes de iniciar deslocamento.");
+        setStep(2);
+        return;
+      }
     }
-    return cur;
-  });
 
-  setStep(5);
-};
+    const loc = await getLocation();
+
+    setCurrent(cur => {
+      if (!cur.deslocamentoInicio) {
+        const updated = {
+          ...cur,
+          deslocamentoInicio: nowISO(),
+          gpsInicio: { lat: loc?.lat || "", lng: loc?.lng || "" }
+        };
+        setJornada(j => ({ ...j, inicioExpediente: j.inicioExpediente || nowISO() }));
+        return updated;
+      }
+      return cur;
+    });
+
+    setStep(5);
+  };
 
 
 
   const iniciarAtendimento = async () => {
+    if (current.pausadoParaAlmoco) {
+      alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+      return;
+    }
+
     const loc = await getLocation();
     setCurrent(cur => {
       if (!cur.atendimentoInicio) {
@@ -1577,6 +1630,11 @@ const iniciarDeslocamento = async () => {
   };
 
   const concluirAtendimento = async () => {
+    if (current.pausadoParaAlmoco) {
+      alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+      return;
+    }
+
     const loc = await getLocation();
 
     setCurrent(cur => {
@@ -1616,6 +1674,11 @@ const iniciarDeslocamento = async () => {
 
   /* ====== Step 8/9: Retorno à base ====== */
   const iniciarDeslocamentoParaBase = async () => {
+    if (current.pausadoParaAlmoco) {
+  alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+  return;
+}
+
     const loc = await getLocation();
     setJornada(j => ({
       ...j,
@@ -1635,6 +1698,11 @@ const iniciarDeslocamento = async () => {
   };
 
   const marcarChegadaBase = async () => {
+    if (current.pausadoParaAlmoco) {
+  alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+  return;
+}
+
     const loc = await getLocation();
     setJornada(j => ({
       ...j,
@@ -2048,9 +2116,9 @@ const iniciarDeslocamento = async () => {
           headStyles: { fillColor: [30, 60, 110] },
           head: [["OS", "Início", "Fim", "Endereço"]],
           body: jornada.atendimentos.map((att) => [
-att.notaEnviada === "sim"
-  ? `OS ${att.ordemTipo}-${att.ordemNumero}`
-  : "Não informada",
+            att.notaEnviada === "sim"
+              ? `OS ${att.ordemTipo}-${att.ordemNumero}`
+              : "Não informada",
             fmt(att.atendimentoInicio),
             fmt(att.finalizadoEm),
             `${att.endereco?.rua || ""} ${att.endereco?.numero || ""} - ${att.endereco?.bairro || ""
@@ -2090,13 +2158,13 @@ att.notaEnviada === "sim"
 
         addSpace(30);
         pdf.setFont("Helvetica", "bold");
-pdf.text(
-  att.notaEnviada === "sim"
-    ? `OS ${att.ordemTipo}-${att.ordemNumero}`
-    : "Não informada",
-  margin,
-  y
-);
+        pdf.text(
+          att.notaEnviada === "sim"
+            ? `OS ${att.ordemTipo}-${att.ordemNumero}`
+            : "Não informada",
+          margin,
+          y
+        );
         y += 16;
 
         for (const f of att.fotos) {
@@ -2227,58 +2295,80 @@ pdf.text(
       exit={{ x: -20, opacity: 0 }}
       transition={{ duration: 0.24 }}
     >
-      {/* ===================== PERGUNTA SOBRE NOTA ===================== */}
-
+      {/* ------------------- PERGUNTA SOBRE NOTA ------------------- */}
       <Field>
         <Label>Número da nota foi enviado?</Label>
 
         <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          {/* -------- BOTÃO SIM -------- */}
           <BigBtn
             style={{
               flex: 1,
               background: notaEnviada === "sim" ? "#38bdf8" : "#0d2234",
-              borderColor: notaEnviada === "sim" ? "#38bdf8" : "#00396b"
+              borderColor: notaEnviada === "sim" ? "#38bdf8" : "#00396b",
             }}
-            onClick={() => setNotaEnviada("sim")}
+            onClick={() => {
+              setNotaEnviada("sim");
+              // NÃO limpar nada aqui — usuário poderá preencher os campos abaixo
+            }}
           >
             Sim
           </BigBtn>
 
+          {/* -------- BOTÃO NÃO -------- */}
           <BigBtn
             style={{
               flex: 1,
               background: notaEnviada === "nao" ? "#38bdf8" : "#0d2234",
-              borderColor: notaEnviada === "nao" ? "#38bdf8" : "#00396b"
+              borderColor: notaEnviada === "nao" ? "#38bdf8" : "#00396b",
             }}
-            onClick={() => setNotaEnviada("nao")}
+            onClick={() => {
+              setNotaEnviada("nao");
+
+              // 🔥 AQUI: limpamos automaticamente os campos da OS
+              setCurrent((c) => ({
+                ...c,
+                ordemTipo: "",
+                ordemPrefixo: "",
+                ordemNumero: "",
+              }));
+            }}
           >
             Não
           </BigBtn>
         </div>
 
-        <div style={{ color: "#94a3b8", marginTop: 6 }}>
-          Escolha uma opção para continuar.
-        </div>
+        {notaEnviada === null && (
+          <div style={{ color: "#f87171", marginTop: 6, fontWeight: 600 }}>
+            * Obrigatório selecionar uma das opções
+          </div>
+        )}
       </Field>
 
-      {/* ===================== CAMPOS SOMENTE SE “SIM” ===================== */}
-
+      {/* ------------------- CAMPOS SE (SIM) ------------------- */}
       {notaEnviada === "sim" && (
         <>
           <Field>
             <Label>Prefixo / Tipo da OS</Label>
 
-            {current.tipo === "interno" ? (
-              <Input readOnly value={current.ordemPrefixo} />
-            ) : (
-              <Select
-                value={current.ordemTipo}
-                onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
-              >
-                <option value="3">3</option>
-                <option value="7">7</option>
-                <option value="100000">100000</option>
-              </Select>
+            <Select
+              value={current.ordemTipo}
+              onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
+              style={{
+                borderColor:
+                  current.ordemTipo === "" ? "#f87171" : "#00396b",
+              }}
+            >
+              <option value="">Selecione...</option>
+              <option value="3">3</option>
+              <option value="7">7</option>
+              <option value="100000">100000</option>
+            </Select>
+
+            {current.ordemTipo === "" && (
+              <div style={{ color: "#f87171", marginTop: 4 }}>
+                * Escolha um prefixo
+              </div>
             )}
           </Field>
 
@@ -2295,17 +2385,22 @@ pdf.text(
                   e.target.value.replace(/\D/g, "").slice(0, 6)
                 )
               }
+              style={{
+                borderColor:
+                  current.ordemNumero.length !== 6 ? "#f87171" : "#00396b",
+              }}
             />
 
-            <div style={{ color: "#94a3b8", marginTop: 6 }}>
-              Obrigatório — não avança enquanto não tiver 6 dígitos.
-            </div>
+            {current.ordemNumero.length !== 6 && (
+              <div style={{ color: "#f87171", marginTop: 4 }}>
+                * Necessário ter exatamente 6 dígitos
+              </div>
+            )}
           </Field>
         </>
       )}
 
-      {/* ===================== BOTÕES ===================== */}
-
+      {/* ------------------- BOTÕES ------------------- */}
       <div style={{ display: "flex", gap: 8 }}>
         <BigBtn onClick={() => setStep(1)}>
           <ChevronLeft size={18} /> Voltar
@@ -2314,18 +2409,29 @@ pdf.text(
         <BigBtn
           $primary
           onClick={() => {
-            // SE RESPONDEU SIM → valida prefixo e número
+            // Precisa selecionar SIM ou NÃO
+            if (notaEnviada === null) {
+              alert("Selecione se a nota foi enviada (Sim ou Não).");
+              return;
+            }
+
+            // Se SIM, validar prefixo + número
             if (notaEnviada === "sim") {
+              if (current.ordemTipo === "") {
+                alert("Escolha o prefixo da OS.");
+                return;
+              }
+
               if (!/^\d{6}$/.test(current.ordemNumero)) {
-                alert("Preencha 6 dígitos da OS antes de avançar.");
+                alert("Preencha o número da OS com 6 dígitos.");
                 return;
               }
             }
 
-            // SE RESPONDEU NÃO → ignora validação
-        setCurrent(c => ({ ...c, notaEnviada }));
-setStep(3);
+            // Salvar no atendimento
+            setCurrent((c) => ({ ...c, notaEnviada }));
 
+            setStep(3);
           }}
         >
           Próximo <ChevronRight size={18} />
@@ -2333,6 +2439,7 @@ setStep(3);
       </div>
     </motion.div>
   );
+
 
 
   /* ================== Step 3: Endereço ================== */
@@ -2448,7 +2555,7 @@ setStep(3);
           <div style={{ fontWeight: 700 }}>Resumo</div>
 
           <div style={{ color: "#9fb4c9", marginTop: 6 }}>
-             Ordem: {notaEnviada ? `${current.ordemTipo}-${current.ordemNumero || "—"}` : "Não informada"} <br />
+            Ordem: {notaEnviada ? `${current.ordemTipo}-${current.ordemNumero || "—"}` : "Não informada"} <br />
             Endereço: {current.endereco.rua || "—"} {current.endereco.numero || ""} —{" "}
             {current.endereco.bairro || ""} — {current.endereco.cidade || ""}
           </div>
@@ -2476,34 +2583,51 @@ setStep(3);
       exit={{ x: -20, opacity: 0 }}
       transition={{ duration: 0.24 }}
     >
-      <Field>
-        <Label>Deslocamento ativo</Label>
+      {/* 🔥 BLOQUEIO DE DESLOCAMENTO SE PAUSADO PARA ALMOÇO */}
+      {current.pausadoParaAlmoco && (
+        <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+          <strong style={{ color: "#f59e0b" }}>
+            Atendimento pausado para almoço
+          </strong>
+          <br />
+          Finalize o almoço para continuar.
+        </Card>
+      )}
 
-        <div style={{ color: "#9fb4c9", marginBottom: 8 }}>
-          Deslocamento iniciado em: {fmt(current.deslocamentoInicio)}
-        </div>
+      {/* Se está pausado → não renderiza o restante do Step 5 */}
+      {current.pausadoParaAlmoco ? null : (
+        <Field>
+          <Label>Deslocamento ativo</Label>
 
-        <div style={{ color: "#9fb4c9", marginBottom: 8 }}>
-          GPS início: {current.gpsInicio?.lat || "—"},{" "}
-          {current.gpsInicio?.lng || "—"}
-        </div>
+          <div style={{ color: "#9fb4c9", marginBottom: 8 }}>
+            Deslocamento iniciado em: {fmt(current.deslocamentoInicio)}
+          </div>
 
-        <div style={{ color: "#9fb4c9", marginBottom: 14 }}>
-          Distância estimada até a base:{" "}
-          {distanciaAteBase() ? (distanciaAteBase() / 1000).toFixed(2) + " km" : "—"}
-        </div>
+          <div style={{ color: "#9fb4c9", marginBottom: 8 }}>
+            GPS início: {current.gpsInicio?.lat || "—"},{" "}
+            {current.gpsInicio?.lng || "—"}
+          </div>
 
-        <BigBtn
-          $primary
-          onClick={() => {
-            iniciarAtendimento();
-          }}
-        >
-          Iniciar atendimento
-        </BigBtn>
-      </Field>
+          <div style={{ color: "#9fb4c9", marginBottom: 14 }}>
+            Distância estimada até a base:{" "}
+            {distanciaAteBase()
+              ? (distanciaAteBase() / 1000).toFixed(2) + " km"
+              : "—"}
+          </div>
+
+          <BigBtn
+            $primary
+            onClick={() => {
+              iniciarAtendimento();
+            }}
+          >
+            Iniciar atendimento
+          </BigBtn>
+        </Field>
+      )}
     </motion.div>
   );
+
 
   /* ================== Step 6: Atendimento em andamento ================== */
   const Step6_AtendimentoAtivo = (
@@ -2514,34 +2638,45 @@ setStep(3);
       exit={{ x: -20, opacity: 0 }}
       transition={{ duration: 0.24 }}
     >
-      <Field>
-        <Label>Atendimento</Label>
-
-        <div style={{ color: "#9fb4c9" }}>
-          Use os botões para iniciar e finalizar o atendimento.
-        </div>
-
-        <Card style={{ marginTop: 10 }}>
-          <div style={{ fontWeight: 700 }}>Status</div>
-          <div style={{ marginTop: 6, color: "#9fb4c9" }}>
-            Deslocamento: {fmt(current.deslocamentoInicio)} <br />
-            Início atendimento: {fmt(current.atendimentoInicio)} <br />
-            Finalizado: {fmt(current.finalizadoEm)}
-          </div>
+      {/* 🔥 BLOQUEIO SE ESTIVER PAUSADO PARA ALMOÇO */}
+      {current.pausadoParaAlmoco && (
+        <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+          <strong style={{ color: "#f59e0b" }}>
+            Atendimento pausado para almoço
+          </strong>
+          <br />
+          Finalize o almoço para continuar.
         </Card>
+      )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <BigBtn onClick={() => setStep(5)}>
-            <ChevronLeft size={18} /> Voltar
-          </BigBtn>
+      {/* Se está pausado → não renderiza o restante do Step 6 */}
+      {current.pausadoParaAlmoco ? null : (
+        <Field>
+          <Label>Atendimento</Label>
 
-          <BigBtn $primary onClick={concluirAtendimento}>
-            Finalizar atendimento
-          </BigBtn>
-        </div>
-      </Field>
+          <div style={{ color: "#9fb4c9" }}>
+            Use os botões para finalizar o atendimento.
+          </div>
+
+          <Card style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 700 }}>Status</div>
+            <div style={{ marginTop: 6, color: "#9fb4c9" }}>
+              Deslocamento: {fmt(current.deslocamentoInicio)} <br />
+              Início atendimento: {fmt(current.atendimentoInicio)} <br />
+              Finalizado: {fmt(current.finalizadoEm)}
+            </div>
+          </Card>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <BigBtn $primary onClick={concluirAtendimento}>
+              Finalizar atendimento
+            </BigBtn>
+          </div>
+        </Field>
+      )}
     </motion.div>
   );
+
 
   /* ================== Step 7: Atendimento concluído ================== */
   const Step7_AtendimentoConcluido = (
@@ -2617,20 +2752,36 @@ setStep(3);
   );
   /* ================== Step 9: Retorno à base ================== */
   const Step9_RetornoBase = (
-    <motion.div
-      key="s9"
-      initial={{ x: 20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -20, opacity: 0 }}
-      transition={{ duration: 0.24 }}
-    >
+  <motion.div
+    key="s9"
+    initial={{ x: 20, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    exit={{ x: -20, opacity: 0 }}
+    transition={{ duration: 0.24 }}
+  >
+
+    
+    {/* 🔥 BLOQUEIO SE PAUSADO PARA ALMOÇO */}
+    {current.pausadoParaAlmoco && (
+      <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+        <strong style={{ color: "#f59e0b" }}>
+          Retorno à base pausado para almoço
+        </strong>
+        <br />
+        Finalize o almoço para continuar.
+      </Card>
+    )}
+
+    {/* Quando pausado → não renderiza resto do conteúdo */}
+    {current.pausadoParaAlmoco ? null : (
       <Field>
         <Label>Retorno à base em andamento</Label>
 
         <Card>
           <div style={{ fontWeight: 700 }}>Retorno à base</div>
           <div style={{ color: "#9fb4c9", marginTop: 8 }}>
-            Deslocamento iniciado em: {fmt(jornada.baseLogs[jornada.baseLogs.length - 1]?.time)} <br />
+            Deslocamento iniciado em:{" "}
+            {fmt(jornada.baseLogs[jornada.baseLogs.length - 1]?.time)} <br />
             Distância estimada até a base:{" "}
             {distanciaAteBase()
               ? (distanciaAteBase() / 1000).toFixed(2) + " km"
@@ -2643,13 +2794,20 @@ setStep(3);
             Confirmar chegada à base
           </BigBtn>
 
-          <BigBtn onClick={() => { setInterromperReasonOpen(true); setStep(10); }}>
+          <BigBtn
+            onClick={() => {
+              setInterromperReasonOpen(true);
+              setStep(10);
+            }}
+          >
             Interromper deslocamento (novo chamado)
           </BigBtn>
         </div>
       </Field>
-    </motion.div>
-  );
+    )}
+  </motion.div>
+);
+
   /* ================== Step 10: Interromper retorno (motivo) ================== */
   const Step10_Interromper = (
     <motion.div
@@ -3056,6 +3214,17 @@ setStep(3);
   };
 
   const finalizarAlmoco = async () => {
+
+    if (current.pausadoParaAlmoco) {
+  const voltar = current.stepAntesAlmoco || 5; // fallback
+  setCurrent(c => ({
+    ...c,
+    pausadoParaAlmoco: false,
+    stepAntesAlmoco: null
+  }));
+  setStep(voltar);
+}
+
     const loc = await getLocation();
 
     setJornada(j => {
@@ -3163,17 +3332,17 @@ setStep(3);
             key={att.id}
             style={{ marginTop: 8, border: "1px solid #00396b" }}
           >
-          <strong>OS / Nota</strong><br/>
+            <strong>OS / Nota</strong><br />
 
-{att.notaEnviada === "sim" ? (
-  <span>
-    {att.ordemTipo}-{att.ordemNumero}
-  </span>
-) : (
-  <span style={{ color: "#fbbf24" }}>
-    Numero de nota não informado na solicitação
-  </span>
-)}
+            {att.notaEnviada === "sim" ? (
+              <span>
+                {att.ordemTipo}-{att.ordemNumero}
+              </span>
+            ) : (
+              <span style={{ color: "#fbbf24" }}>
+                Numero de nota não informado na solicitação
+              </span>
+            )}
 
             <br />
             {att.endereco?.rua || "—"} {att.endereco?.numero || ""} —{" "}
@@ -3339,7 +3508,17 @@ setStep(3);
               return (
                 <>
                   {podeIniciarAlmoco && (
-                    <BigBtn $primary onClick={iniciarAlmoco}>
+                    <BigBtn
+                      $primary
+                      onClick={() => {
+if (step === 5 || step === 6 || step === 9 || step === 10) {
+                          // deslocamento ativo ou atendimento ativo
+                          setConfirmPauseForLunchOpen(true);
+                          return;
+                        }
+                        iniciarAlmoco();
+                      }}
+                    >
                       Iniciar Almoço
                     </BigBtn>
                   )}
@@ -3491,6 +3670,51 @@ setStep(3);
             </Panel>
           </Overlay>
         )}
+
+        {/* MODAL Pausa ALMOÇO */}
+
+        {confirmPauseForLunchOpen && (
+          <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmPauseForLunchOpen(false)}>
+            <Panel initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+              <Body>
+                <h3 style={{ color: "#f59e0b" }}>Pausar atendimento para almoço?</h3>
+
+                <div style={{ color: "#cbd5e1", marginTop: 8, marginBottom: 16 }}>
+                  O atendimento atual será pausado e será iniciado um registro de almoço.
+                  Você só poderá continuar o atendimento quando finalizar o almoço.
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <BigBtn onClick={() => setConfirmPauseForLunchOpen(false)}>
+                    Cancelar
+                  </BigBtn>
+
+                  <BigBtn
+                    $primary
+                    onClick={() => {
+                      setConfirmPauseForLunchOpen(false);
+
+                      // marca pausa
+                      setCurrent(c => ({
+                        ...c,
+                        pausadoParaAlmoco: true,
+                        stepAntesAlmoco: step
+                      }));
+
+                      iniciarAlmoco(); // usa seu método atual
+
+                      // força para a área do almoço
+                      setStep(step); // mantém step igual até o fim do almoço
+                    }}
+                  >
+                    Pausar e iniciar almoço
+                  </BigBtn>
+                </div>
+              </Body>
+            </Panel>
+          </Overlay>
+        )}
+
 
         <Body>
 
