@@ -1526,41 +1526,41 @@ export default function AttendanceWizardModal({ onClose }) {
     setStep(1);
   };
 
-// ====================BLOQUEIA INICIAR DUAS JORNADAS NO MESMO DIA =================
-//   const iniciarJornada = async () => {
-//   const hoje = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // ====================BLOQUEIA INICIAR DUAS JORNADAS NO MESMO DIA =================
+  //   const iniciarJornada = async () => {
+  //   const hoje = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-//   // Carrega jornadas finalizadas
-//   let stored = [];
-//   try {
-//     stored = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
-//   } catch {}
+  //   // Carrega jornadas finalizadas
+  //   let stored = [];
+  //   try {
+  //     stored = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+  //   } catch {}
 
-//   // Verifica se já existe jornada do mesmo dia
-//   const existeJornadaHoje = stored.some(j => j.date === hoje);
+  //   // Verifica se já existe jornada do mesmo dia
+  //   const existeJornadaHoje = stored.some(j => j.date === hoje);
 
-//   if (existeJornadaHoje) {
-//     alert("Você já finalizou uma jornada neste dia. Não é permitido iniciar outra.");
-//     return;
-//   }
+  //   if (existeJornadaHoje) {
+  //     alert("Você já finalizou uma jornada neste dia. Não é permitido iniciar outra.");
+  //     return;
+  //   }
 
-//   // Verifica se jornada atual já está iniciada mas não finalizada (fail-safe)
-//   if (jornada.inicioExpediente && !jornada.fimExpediente) {
-//     alert("Você já possui uma jornada em andamento. Finalize antes de iniciar outra.");
-//     return;
-//   }
+  //   // Verifica se jornada atual já está iniciada mas não finalizada (fail-safe)
+  //   if (jornada.inicioExpediente && !jornada.fimExpediente) {
+  //     alert("Você já possui uma jornada em andamento. Finalize antes de iniciar outra.");
+  //     return;
+  //   }
 
-//   // Agora pode iniciar
-//   const loc = await getLocation();
-//   setJornada(j => ({
-//     ...j,
-//     inicioExpediente: nowISO(),
-//     expedienteGps: { lat: loc?.lat || "", lng: loc?.lng || "" }
-//   }));
+  //   // Agora pode iniciar
+  //   const loc = await getLocation();
+  //   setJornada(j => ({
+  //     ...j,
+  //     inicioExpediente: nowISO(),
+  //     expedienteGps: { lat: loc?.lat || "", lng: loc?.lng || "" }
+  //   }));
 
-//   startNewAtendimento("externo");
-//   setStep(1);
-// };
+  //   startNewAtendimento("externo");
+  //   setStep(1);
+  // };
 
 
   /* ================== PARTE 2 — Fluxo de passos (Steps 1..9) ================== */
@@ -1675,9 +1675,9 @@ export default function AttendanceWizardModal({ onClose }) {
   /* ====== Step 8/9: Retorno à base ====== */
   const iniciarDeslocamentoParaBase = async () => {
     if (current.pausadoParaAlmoco) {
-  alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
-  return;
-}
+      alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+      return;
+    }
 
     const loc = await getLocation();
     setJornada(j => ({
@@ -1699,9 +1699,9 @@ export default function AttendanceWizardModal({ onClose }) {
 
   const marcarChegadaBase = async () => {
     if (current.pausadoParaAlmoco) {
-  alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
-  return;
-}
+      alert("Atendimento pausado para almoço. Finalize o almoço para continuar.");
+      return;
+    }
 
     const loc = await getLocation();
     setJornada(j => ({
@@ -2053,6 +2053,39 @@ export default function AttendanceWizardModal({ onClose }) {
       addSpace(20);
       pdf.line(margin, y, 555, y);
       y += 20;
+
+      /* ===================== RESUMO DE TEMPOS ===================== */
+      addSpace(30);
+      pdf.setFont("Helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("Resumo de Tempos", margin, y);
+      y += 20;
+
+      const { atendimentoMs, deslocamentoMs } = calcularTotais();
+      const jornadaMs = calcularJornadaTotal();
+      const almocoMs = jornada.almocos.reduce((tot, al) => {
+        if (al.inicio && al.fim) tot += new Date(al.fim) - new Date(al.inicio);
+        return tot;
+      }, 0);
+
+      pdf.setFont("Helvetica", "normal");
+      pdf.setFontSize(12);
+
+      pdf.text(`Tempo de atendimento: ${msToHuman(atendimentoMs)}`, margin, y);
+      y += 16;
+
+      pdf.text(`Tempo de deslocamento: ${msToHuman(deslocamentoMs)}`, margin, y);
+      y += 16;
+
+      pdf.text(`Tempo de almoço: ${msToHuman(almocoMs)}`, margin, y);
+      y += 16;
+
+      pdf.text(`Jornada total: ${msToHuman(jornadaMs)}`, margin, y);
+      y += 26;
+
+      pdf.line(margin, y, 555, y);
+      y += 20;
+
 
       /* -------------------------------------------
  *  PAUSA PARA ALMOÇO
@@ -2752,61 +2785,61 @@ export default function AttendanceWizardModal({ onClose }) {
   );
   /* ================== Step 9: Retorno à base ================== */
   const Step9_RetornoBase = (
-  <motion.div
-    key="s9"
-    initial={{ x: 20, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    exit={{ x: -20, opacity: 0 }}
-    transition={{ duration: 0.24 }}
-  >
+    <motion.div
+      key="s9"
+      initial={{ x: 20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -20, opacity: 0 }}
+      transition={{ duration: 0.24 }}
+    >
 
-    
-    {/* 🔥 BLOQUEIO SE PAUSADO PARA ALMOÇO */}
-    {current.pausadoParaAlmoco && (
-      <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
-        <strong style={{ color: "#f59e0b" }}>
-          Retorno à base pausado para almoço
-        </strong>
-        <br />
-        Finalize o almoço para continuar.
-      </Card>
-    )}
 
-    {/* Quando pausado → não renderiza resto do conteúdo */}
-    {current.pausadoParaAlmoco ? null : (
-      <Field>
-        <Label>Retorno à base em andamento</Label>
-
-        <Card>
-          <div style={{ fontWeight: 700 }}>Retorno à base</div>
-          <div style={{ color: "#9fb4c9", marginTop: 8 }}>
-            Deslocamento iniciado em:{" "}
-            {fmt(jornada.baseLogs[jornada.baseLogs.length - 1]?.time)} <br />
-            Distância estimada até a base:{" "}
-            {distanciaAteBase()
-              ? (distanciaAteBase() / 1000).toFixed(2) + " km"
-              : "—"}
-          </div>
+      {/* 🔥 BLOQUEIO SE PAUSADO PARA ALMOÇO */}
+      {current.pausadoParaAlmoco && (
+        <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+          <strong style={{ color: "#f59e0b" }}>
+            Retorno à base pausado para almoço
+          </strong>
+          <br />
+          Finalize o almoço para continuar.
         </Card>
+      )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <BigBtn $primary onClick={marcarChegadaBase}>
-            Confirmar chegada à base
-          </BigBtn>
+      {/* Quando pausado → não renderiza resto do conteúdo */}
+      {current.pausadoParaAlmoco ? null : (
+        <Field>
+          <Label>Retorno à base em andamento</Label>
 
-          <BigBtn
-            onClick={() => {
-              setInterromperReasonOpen(true);
-              setStep(10);
-            }}
-          >
-            Interromper deslocamento (novo chamado)
-          </BigBtn>
-        </div>
-      </Field>
-    )}
-  </motion.div>
-);
+          <Card>
+            <div style={{ fontWeight: 700 }}>Retorno à base</div>
+            <div style={{ color: "#9fb4c9", marginTop: 8 }}>
+              Deslocamento iniciado em:{" "}
+              {fmt(jornada.baseLogs[jornada.baseLogs.length - 1]?.time)} <br />
+              Distância estimada até a base:{" "}
+              {distanciaAteBase()
+                ? (distanciaAteBase() / 1000).toFixed(2) + " km"
+                : "—"}
+            </div>
+          </Card>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <BigBtn $primary onClick={marcarChegadaBase}>
+              Confirmar chegada à base
+            </BigBtn>
+
+            <BigBtn
+              onClick={() => {
+                setInterromperReasonOpen(true);
+                setStep(10);
+              }}
+            >
+              Interromper deslocamento (novo chamado)
+            </BigBtn>
+          </div>
+        </Field>
+      )}
+    </motion.div>
+  );
 
   /* ================== Step 10: Interromper retorno (motivo) ================== */
   const Step10_Interromper = (
@@ -2889,8 +2922,21 @@ export default function AttendanceWizardModal({ onClose }) {
             label: `Almoço suspenso — ${al.solicitanteSuspensao}`,
           });
         }
+
+        // duração do almoço no timeline
+        if (al.inicio && al.fim) {
+          const dur = new Date(al.fim) - new Date(al.inicio);
+          const min = Math.round(dur / 60000);
+
+          events.push({
+            time: al.fim,
+            label: `Almoço concluído — duração: ${min} min`
+          });
+        }
+
       });
     }
+
 
 
 
@@ -3216,14 +3262,14 @@ export default function AttendanceWizardModal({ onClose }) {
   const finalizarAlmoco = async () => {
 
     if (current.pausadoParaAlmoco) {
-  const voltar = current.stepAntesAlmoco || 5; // fallback
-  setCurrent(c => ({
-    ...c,
-    pausadoParaAlmoco: false,
-    stepAntesAlmoco: null
-  }));
-  setStep(voltar);
-}
+      const voltar = current.stepAntesAlmoco || 5; // fallback
+      setCurrent(c => ({
+        ...c,
+        pausadoParaAlmoco: false,
+        stepAntesAlmoco: null
+      }));
+      setStep(voltar);
+    }
 
     const loc = await getLocation();
 
@@ -3310,6 +3356,14 @@ export default function AttendanceWizardModal({ onClose }) {
                   ⚠ Almoço abaixo do tempo mínimo (50 min)
                 </div>
               )}
+
+              {/* duração do almoço */}
+              {al.inicio && al.fim && (
+                <div style={{ marginTop: 6, color: "#60a5fa" }}>
+                  <strong>Duração:</strong> {formatDuracao(new Date(al.fim) - new Date(al.inicio))}
+                </div>
+              )}
+
 
             </Card>
           ))}
@@ -3468,9 +3522,9 @@ export default function AttendanceWizardModal({ onClose }) {
             </Sub>
           </TitleWrap>
 
-          <CloseBtn onClick={() => onClose?.()}>
+          {/* <CloseBtn onClick={() => onClose?.()}>
             <X size={20} />
-          </CloseBtn>
+          </CloseBtn> */}
         </Header>
 
         {tab === 0 && (
@@ -3511,7 +3565,7 @@ export default function AttendanceWizardModal({ onClose }) {
                     <BigBtn
                       $primary
                       onClick={() => {
-if (step === 5 || step === 6 || step === 9 || step === 10) {
+                        if (step === 5 || step === 6 || step === 7 || step === 9 || step === 10) {
                           // deslocamento ativo ou atendimento ativo
                           setConfirmPauseForLunchOpen(true);
                           return;
