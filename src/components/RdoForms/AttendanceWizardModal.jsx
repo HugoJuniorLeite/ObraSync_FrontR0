@@ -1144,7 +1144,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X,
+    X,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -1154,6 +1154,11 @@ import {
   Clock,
   BarChart2,
   FileText,
+  CalendarDays,
+  ClipboardList,
+  Package,
+  UploadCloud,
+  ArrowLeftCircle,
 } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
@@ -1276,6 +1281,11 @@ const BASE_COORDS = { lat: -23.57647, lng: -46.60864 };
 export default function AttendanceWizardModal({ onClose }) {
   // tabs: 0 = Wizard, 1 = Timeline, 2 = Painel, 3 = RDO/Preview
   const [tab, setTab] = useState(0);
+
+  // Painel: seção atual e filtro do histórico
+const [painelSection, setPainelSection] = useState("home"); // "home" | "escala" | "historico" | "solicitacoes" | "documentos"
+const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-DD
+
 
   // explicit steps (we will go 1..9 per your spec)
   const [step, setStep] = useState(0); // 0 = pre-check (start jornada) ; 1..9 are real steps
@@ -1408,6 +1418,14 @@ export default function AttendanceWizardModal({ onClose }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(jornada));
   }, [jornada]);
+
+
+  useEffect(() => {
+  if (notaEnviada === "sim" && current.tipo === "interno") {
+    updateCurrentField("ordemTipo", "100000");
+  }
+}, [notaEnviada, current.tipo]);
+
 
   // progress pct mapping (for progress bar)
   const pct = (() => {
@@ -2264,7 +2282,7 @@ export default function AttendanceWizardModal({ onClose }) {
       pdf.text("Fotos dos Atendimentos", margin, y);
       y += 20;
 
-      const FOTO_SIZE = 90; // tamanho otimizado
+      const FOTO_SIZE = 250; // tamanho otimizado
       const GAP = 12;
       const MAX_X = 555 - FOTO_SIZE;
 
@@ -2465,29 +2483,36 @@ export default function AttendanceWizardModal({ onClose }) {
       {/* ------------------- CAMPOS SE (SIM) ------------------- */}
       {notaEnviada === "sim" && (
         <>
+          
+
           <Field>
-            <Label>Prefixo / Tipo da OS</Label>
+  <Label>Prefixo / Tipo da OS</Label>
 
-            <Select
-              value={current.ordemTipo}
-              onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
-              style={{
-                borderColor:
-                  current.ordemTipo === "" ? "#f87171" : "#00396b",
-              }}
-            >
-              <option value="">Selecione...</option>
-              <option value="3">3</option>
-              <option value="7">7</option>
-              <option value="100000">100000</option>
-            </Select>
+  {current.tipo === "interno" ? (
+    <Input readOnly value="100000" />
+  ) : (
+    <Select
+      value={current.ordemTipo}
+      onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
+      style={{
+        borderColor:
+          current.ordemTipo === "" ? "#f87171" : "#00396b",
+      }}
+    >
+      <option value="">Selecione...</option>
+      <option value="3">3</option>
+      <option value="7">7</option>
+      <option value="100000">100000</option>
+    </Select>
+  )}
 
-            {current.ordemTipo === "" && (
-              <div style={{ color: "#f87171", marginTop: 4 }}>
-                * Escolha um prefixo
-              </div>
-            )}
-          </Field>
+  {current.tipo !== "interno" && current.ordemTipo === "" && (
+    <div style={{ color: "#f87171", marginTop: 4 }}>
+      * Escolha um prefixo
+    </div>
+  )}
+</Field>
+
 
           <Field>
             <Label>Número da OS (6 dígitos)</Label>
@@ -3406,50 +3431,510 @@ const Step6_AtendimentoAtivo = (
   };
 
 
-  const PainelView = (() => {
+  // ========================== 
+
+// Junta jornada atual + jornadas salvas para o Painel "Meus atendimentos"
+const getTodasJornadas = () => {
+  const lista = [];
+
+  // Jornada atual (se já iniciou expediente)
+  if (jornada.inicioExpediente) {
+    lista.push({
+      ...jornada,
+      isHoje: true,
+      label: `Jornada de hoje (${jornada.date})`,
+    });
+  }
+
+  // Jornadas encerradas salvas no localStorage
+  (savedJourneys || []).forEach((j) => {
+    lista.push({
+      ...j,
+      isHoje: false,
+      label: `Jornada ${j.date}`,
+    });
+  });
+
+  // ordena da mais recente para a mais antiga
+  return lista.sort(
+    (a, b) => new Date(b.date + "T00:00:00") - new Date(a.date + "T00:00:00")
+  );
+};
+
+// Calcula distância total para uma jornada qualquer
+const calcularDistanciaTotalDe = (jor) => {
+  let tot = 0;
+
+  (jor.atendimentos || []).forEach((a) => {
+    if (a.rota && a.rota.length > 1) {
+      for (let i = 1; i < a.rota.length; i++) {
+        tot += haversine(a.rota[i - 1], a.rota[i]);
+      }
+    }
+  });
+
+  const logs = jor.baseLogs || [];
+  for (let i = 1; i < logs.length; i++) {
+    const p1 = logs[i - 1].gps;
+    const p2 = logs[i].gps;
+    if (p1 && p2 && p1.lat && p2.lat) {
+      tot += haversine(p1, p2);
+    }
+  }
+
+  return Math.round(tot);
+};
+
+const calcularTotaisDe = (jor) => {
+  let atendimentoMs = 0;
+  let deslocamentoMs = 0;
+
+  (jor.atendimentos || []).forEach((a, i) => {
+    atendimentoMs += calcDuration(a.atendimentoInicio, a.finalizadoEm);
+    deslocamentoMs += calcDuration(a.deslocamentoInicio, a.atendimentoInicio);
+
+    const next = jor.atendimentos[i + 1];
+    if (next && a.finalizadoEm && next.deslocamentoInicio) {
+      deslocamentoMs += calcDuration(a.finalizadoEm, next.deslocamentoInicio);
+    }
+  });
+
+  const logs = jor.baseLogs || [];
+  for (let i = 0; i < logs.length; i += 2) {
+    const ini = logs[i];
+    const fim = logs[i + 1];
+    if (
+      ini &&
+      fim &&
+      ini.tipo === "deslocamentoParaBase" &&
+      fim.tipo === "chegadaBase"
+    ) {
+      deslocamentoMs += calcDuration(ini.time, fim.time);
+    }
+  }
+
+  return { atendimentoMs, deslocamentoMs };
+};
+
+const calcularJornadaTotalDe = (jor) =>
+  calcDuration(jor.inicioExpediente, jor.fimExpediente);
+
+
+
+  // const PainelView = (() => {
+  //   const { atendimentoMs, deslocamentoMs } = calcularTotais();
+  //   const jornadaMs = calcularJornadaTotal();
+
+  //   return (
+  //     <div style={{ padding: 12 }}>
+  //       <h3 style={{ color: "#f59e0b", marginBottom: 12 }}>Painel do Dia</h3>
+  //       <div
+  //         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+  //       >
+  //         <Card>
+  //           <strong>Jornada</strong>
+  //           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+  //             {msToHuman(jornadaMs)}
+  //           </div>
+  //         </Card>
+
+  //         <Card>
+  //           <strong>Atendimento</strong>
+  //           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+  //             {msToHuman(atendimentoMs)}{" "}
+  //             <small style={{ color: "#9fb4c9" }}>
+  //               ({calcularProdutividade()}%)
+  //             </small>
+  //           </div>
+  //         </Card>
+
+  //         <Card>
+  //           <strong>Deslocamento</strong>
+  //           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+  //             {msToHuman(deslocamentoMs)}
+  //           </div>
+  //         </Card>
+
+  //         <Card>
+  //           <strong>Distância total</strong>
+  //           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+  //             {(calcularDistanciaTotal() / 1000).toFixed(2)} km
+  //           </div>
+  //         </Card>
+  //       </div>
+  //     </div>
+  //   );
+  // })();
+
+    const PainelView = (() => {
     const { atendimentoMs, deslocamentoMs } = calcularTotais();
     const jornadaMs = calcularJornadaTotal();
+    const distTotalKm = (calcularDistanciaTotal() / 1000).toFixed(2);
 
-    return (
-      <div style={{ padding: 12 }}>
-        <h3 style={{ color: "#f59e0b", marginBottom: 12 }}>Painel do Dia</h3>
-        <div
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+    const renderKpiCards = () => (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+          marginBottom: 14,
+        }}
+      >
+        <Card>
+          <strong>Jornada</strong>
+          <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+            {msToHuman(jornadaMs)}
+          </div>
+        </Card>
+
+        <Card>
+          <strong>Atendimento</strong>
+          <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+            {msToHuman(atendimentoMs)}{" "}
+            <small style={{ color: "#9fb4c9" }}>
+              ({calcularProdutividade()}%)
+            </small>
+          </div>
+        </Card>
+
+        <Card>
+          <strong>Deslocamento</strong>
+          <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+            {msToHuman(deslocamentoMs)}
+          </div>
+        </Card>
+
+        <Card>
+          <strong>Distância total</strong>
+          <div style={{ color: "#7dd3fc", marginTop: 6 }}>
+            {distTotalKm} km
+          </div>
+        </Card>
+      </div>
+    );
+
+    const renderBackButton = () => (
+      <div style={{ marginBottom: 10 }}>
+        <BigBtn
+          onClick={() => setPainelSection("home")}
+          style={{
+            background: "#020617",
+            borderColor: "#1e293b",
+            color: "#e5e7eb",
+          }}
         >
-          <Card>
-            <strong>Jornada</strong>
-            <div style={{ color: "#7dd3fc", marginTop: 6 }}>
-              {msToHuman(jornadaMs)}
+          <ArrowLeftCircle size={18} />
+          Voltar para o painel
+        </BigBtn>
+      </div>
+    );
+
+    const renderHome = () => (
+      <div style={{ padding: 12 }}>
+        <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>Painel do Dia</h3>
+
+        {renderKpiCards()}
+
+        <div
+          style={{
+            marginTop: 8,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+          }}
+        >
+          <Card
+            style={{
+              padding: 14,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+            onClick={() => setPainelSection("escala")}
+          >
+            <CalendarDays size={26} />
+            <div style={{ fontWeight: 700 }}>Escala de Trabalho</div>
+            <div style={{ color: "#9fb4c9", fontSize: ".8rem" }}>
+              Veja seus dias de trabalho, folgas e feriados.
             </div>
           </Card>
 
-          <Card>
-            <strong>Atendimento</strong>
-            <div style={{ color: "#7dd3fc", marginTop: 6 }}>
-              {msToHuman(atendimentoMs)}{" "}
-              <small style={{ color: "#9fb4c9" }}>
-                ({calcularProdutividade()}%)
-              </small>
+          <Card
+            style={{
+              padding: 14,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+            onClick={() => setPainelSection("historico")}
+          >
+            <ClipboardList size={26} />
+            <div style={{ fontWeight: 700 }}>Meus atendimentos</div>
+            <div style={{ color: "#9fb4c9", fontSize: ".8rem" }}>
+              Consulte jornadas anteriores e RDOs.
             </div>
           </Card>
 
-          <Card>
-            <strong>Deslocamento</strong>
-            <div style={{ color: "#7dd3fc", marginTop: 6 }}>
-              {msToHuman(deslocamentoMs)}
+          <Card
+            style={{
+              padding: 14,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+            onClick={() => setPainelSection("solicitacoes")}
+          >
+            <Package size={26} />
+            <div style={{ fontWeight: 700 }}>Solicitações</div>
+            <div style={{ color: "#9fb4c9", fontSize: ".8rem" }}>
+              Peça EPIs, materiais e outros itens.
             </div>
           </Card>
 
-          <Card>
-            <strong>Distância total</strong>
-            <div style={{ color: "#7dd3fc", marginTop: 6 }}>
-              {(calcularDistanciaTotal() / 1000).toFixed(2)} km
+          <Card
+            style={{
+              padding: 14,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 8,
+            }}
+            onClick={() => setPainelSection("documentos")}
+          >
+            <UploadCloud size={26} />
+            <div style={{ fontWeight: 700 }}>Envio de documentos</div>
+            <div style={{ color: "#9fb4c9", fontSize: ".8rem" }}>
+              Envie atestados e documentos de trabalho.
             </div>
           </Card>
         </div>
       </div>
     );
+
+    const renderEscala = () => (
+      <div style={{ padding: 12 }}>
+        {renderBackButton()}
+        <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>Escala de trabalho</h3>
+
+        <Card>
+          <div style={{ color: "#9fb4c9", marginBottom: 8 }}>
+            Aqui você poderá ver sua escala mensal, folgas, plantões e feriados.
+          </div>
+          <div style={{ color: "#64748b", fontSize: ".85rem" }}>
+            Nesta primeira versão os dados podem ser preenchidos manualmente ou
+            integrados com o backend depois.
+          </div>
+        </Card>
+      </div>
+    );
+
+    const renderHistorico = () => {
+      const todas = getTodasJornadas();
+
+      const filtradas = todas.filter((j) =>
+        historicoDataFiltro
+          ? j.date === historicoDataFiltro
+          : true
+      );
+
+      return (
+        <div style={{ padding: 12 }}>
+          {renderBackButton()}
+          <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>Meus atendimentos</h3>
+
+          <Field>
+            <Label>Filtrar por data</Label>
+            <Input
+              type="date"
+              value={historicoDataFiltro}
+              onChange={(e) => setHistoricoDataFiltro(e.target.value)}
+            />
+          </Field>
+
+          {filtradas.length === 0 && (
+            <div style={{ color: "#94a3b8", marginTop: 8 }}>
+              Nenhuma jornada encontrada para o filtro.
+            </div>
+          )}
+
+          {filtradas.map((j) => {
+            const { atendimentoMs, deslocamentoMs } = calcularTotaisDe(j);
+            const jornadaMsLocal = calcularJornadaTotalDe(j);
+            const distKm = (calcularDistanciaTotalDe(j) / 1000).toFixed(2);
+
+            return (
+              <Card key={j.id || j.date} style={{ marginTop: 10 }}>
+                <div style={{ fontWeight: 700 }}>{j.label}</div>
+                <div style={{ color: "#9fb4c9", fontSize: ".85rem", marginTop: 4 }}>
+                  Início: {fmt(j.inicioExpediente)} <br />
+                  Fim: {fmt(j.fimExpediente)} <br />
+                  Atendimentos: {j.atendimentos?.length || 0}
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 8,
+                    marginTop: 8,
+                  }}
+                >
+                  <div style={{ fontSize: ".85rem" }}>
+                    <strong>Jornada:</strong> {msToHuman(jornadaMsLocal)}
+                    <br />
+                    <strong>Atendimento:</strong> {msToHuman(atendimentoMs)}
+                    <br />
+                    <strong>Deslocamento:</strong> {msToHuman(deslocamentoMs)}
+                  </div>
+
+                  <div style={{ fontSize: ".85rem" }}>
+                    <strong>Distância:</strong> {distKm} km
+                    <br />
+                    <strong>Almoços:</strong> {j.almocos?.length || 0}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {/* TODO: integrar com visualização/edição de RDO por dia */}
+                  <BigBtn
+                    onClick={() => {
+                      alert(
+                        "Aqui você poderá abrir a visualização do RDO completo desta jornada."
+                      );
+                    }}
+                  >
+                    <FileText size={16} />
+                    Ver RDO
+                  </BigBtn>
+
+                  <BigBtn
+                    onClick={() => {
+                      alert(
+                        "Aqui você poderá gerar/baixar o PDF desta jornada (RDO)."
+                      );
+                    }}
+                  >
+                    <DownloadIconStub />
+                    Baixar PDF
+                  </BigBtn>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      );
+    };
+
+    const renderSolicitacoes = () => (
+      <div style={{ padding: 12 }}>
+        {renderBackButton()}
+        <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>Solicitações</h3>
+
+        <Card>
+          <Field>
+            <Label>Tipo de solicitação</Label>
+            <Select defaultValue="">
+              <option value="">Selecione...</option>
+              <option value="epi">EPI</option>
+              <option value="material">Material</option>
+              <option value="ferramenta">Ferramenta</option>
+              <option value="reembolso">Reembolso</option>
+              <option value="outro">Outro</option>
+            </Select>
+          </Field>
+
+          <Field>
+            <Label>Descrição</Label>
+            <textarea
+              placeholder="Descreva o que precisa..."
+              style={{
+                width: "100%",
+                minHeight: 90,
+                background: "#071827",
+                color: "#e5f0ff",
+                border: "1px solid #00396b",
+                padding: 8,
+                borderRadius: 8,
+              }}
+            />
+          </Field>
+
+          <Field>
+            <Label>Anexos (opcional)</Label>
+            <input type="file" multiple />
+          </Field>
+
+          <BigBtn
+            $primary
+            onClick={() => alert("Solicitação registrada (mock).")}
+          >
+            Enviar solicitação
+          </BigBtn>
+        </Card>
+      </div>
+    );
+
+    const renderEnvioDocs = () => (
+      <div style={{ padding: 12 }}>
+        {renderBackButton()}
+        <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>
+          Envio de documentos
+        </h3>
+
+        <Card>
+          <Field>
+            <Label>Categoria</Label>
+            <Select defaultValue="">
+              <option value="">Selecione...</option>
+              <option value="pessoal">Documentos pessoais</option>
+              <option value="trabalho">Documentos de trabalho</option>
+            </Select>
+          </Field>
+
+          <Field>
+            <Label>Descrição (opcional)</Label>
+            <Input placeholder="Ex: Atestado médico, RDO em papel, etc." />
+          </Field>
+
+          <Field>
+            <Label>Arquivos</Label>
+            <input type="file" multiple />
+          </Field>
+
+          <BigBtn
+            $primary
+            onClick={() => alert("Documentos enviados (mock).")}
+          >
+            Enviar documentos
+          </BigBtn>
+        </Card>
+      </div>
+    );
+
+    // 🔄 decide qual tela mostrar
+    if (painelSection === "escala") return renderEscala();
+    if (painelSection === "historico") return renderHistorico();
+    if (painelSection === "solicitacoes") return renderSolicitacoes();
+    if (painelSection === "documentos") return renderEnvioDocs();
+
+    // default
+    return renderHome();
   })();
+
 
   /* ========== RDO / Preview + Assinatura ========== */
   const confirmarEncerrarJornada = () => {
