@@ -1144,7 +1144,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    X,
+  X,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -1159,6 +1159,7 @@ import {
   Package,
   UploadCloud,
   ArrowLeftCircle,
+  History,
 } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
@@ -1283,8 +1284,18 @@ export default function AttendanceWizardModal({ onClose }) {
   const [tab, setTab] = useState(0);
 
   // Painel: seção atual e filtro do histórico
-const [painelSection, setPainelSection] = useState("home"); // "home" | "escala" | "historico" | "solicitacoes" | "documentos"
-const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-DD
+  const [painelSection, setPainelSection] = useState("home"); // "home" | "escala" | "historico" | "solicitacoes" | "documentos"
+  const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-DD
+
+  // aba Painel / Histórico
+  // const [historicoDate, setHistoricoDate] = useState(
+  //   () => new Date().toISOString().slice(0, 10)
+  // );
+
+  // edição de OS em "Meus atendimentos"
+  // const [editingOs, setEditingOs] = useState(null);
+  // editingOs = { jornadaId, atendimentoId, prefixo, numero }
+
 
 
   // explicit steps (we will go 1..9 per your spec)
@@ -1320,6 +1331,49 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
   const [confirmAlmocoEarlyOpen, setConfirmAlmocoEarlyOpen] = useState(false);
   const [tempoAlmocoAtual, setTempoAlmocoAtual] = useState(0);
 
+  const [rdoHistoricoView, setRdoHistoricoView] = useState(null);
+
+  const [rdoEditOs, setRdoEditOs] = useState(null);
+  // { jornadaId, atendimentoId, prefixo, numero, atendimento }
+
+
+  const [rdoTheme, setRdoTheme] = useState("dark");
+  const rdoIsDark = rdoTheme === "dark";
+
+  const rdoCloseBtnRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      try {
+        const mq = window.matchMedia("(prefers-color-scheme: dark)");
+        setRdoTheme(mq.matches ? "dark" : "light");
+      } catch { }
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setRdoHistoricoView(null);
+      }
+    };
+
+    if (rdoHistoricoView && typeof window !== "undefined") {
+      window.addEventListener("keydown", onKeyDown);
+      // foca no botão fechar padrão
+      try {
+        if (rdoCloseBtnRef.current) {
+          rdoCloseBtnRef.current.focus();
+        }
+      } catch { }
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("keydown", onKeyDown);
+      }
+    };
+  }, [rdoHistoricoView]);
 
   const [notaEnviada, setNotaEnviada] = useState(null); // null, "sim", "nao"
   // const [prefixoNota, setPrefixoNota] = useState("");
@@ -1421,10 +1475,10 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
 
 
   useEffect(() => {
-  if (notaEnviada === "sim" && current.tipo === "interno") {
-    updateCurrentField("ordemTipo", "100000");
-  }
-}, [notaEnviada, current.tipo]);
+    if (notaEnviada === "sim" && current.tipo === "interno") {
+      updateCurrentField("ordemTipo", "100000");
+    }
+  }, [notaEnviada, current.tipo]);
 
 
   // progress pct mapping (for progress bar)
@@ -1498,37 +1552,6 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
     setStep(1);
     setAnimKey(k => k + 1);
   };
-
-
-  // if component mounted and jornada already started -> go to step 1, else pre-check (0)
-  // useEffect(() => {
-  //   if (jornada.inicioExpediente) {
-  //     // jornada already started, go to step 1 (Tipo)
-  //     startNewAtendimento("externo");
-  //   } else {
-  //     // show pre-check to allow "Iniciar Jornada" first
-  //     setStep(0);
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, []);
-
-  // // ============New useffect acima ================
-  // useEffect(() => {
-  //   if (!jornada.inicioExpediente) {
-  //     setStep(0);
-  //     return;
-  //   }
-
-
-
-  //   // Só inicia novo atendimento se não existir um em aberto
-  //   const existeEmAberto =
-  //     current && !current.finalizadoEm && !current.deslocamentoInicio;
-
-  //   if (!existeEmAberto && jornada.atendimentos.length > 0) {
-  //     startNewAtendimento("externo");
-  //   }
-  // }, []);
 
   useEffect(() => {
     if (!jornada.inicioExpediente) {
@@ -1956,164 +1979,6 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
   };
 
 
-  // ================== EXPORT PDF ==================== */
-
-  // IMPORTANTE: certifique-se de ter importado essas libs no topo:
-  // import jsPDF from "jspdf";
-  // import autoTable from "jspdf-autotable";
-
-  // const exportPreviewAsPdf = async () => {
-  //   try {
-  //     const pdf = new jsPDF({
-  //       orientation: "portrait",
-  //       unit: "pt",
-  //       format: "a4",
-  //     });
-
-  //     const margin = 40;
-  //     let y = margin;
-
-  //     /* -------------------------------------------
-  //      *  CABEÇALHO
-  //      * ------------------------------------------- */
-  //     pdf.setFont("Helvetica", "bold");
-  //     pdf.setFontSize(18);
-  //     pdf.text("RDO - Relatório Diário de Operações", margin, y);
-  //     y += 28;
-
-  //     pdf.setFontSize(12);
-  //     pdf.setFont("Helvetica", "normal");
-  //     pdf.text(`Data: ${jornada.date}`, margin, y);
-  //     y += 18;
-
-  //     pdf.text(`Início expediente: ${fmt(jornada.inicioExpediente)}`, margin, y);
-  //     y += 16;
-  //     pdf.text(`Fim expediente: ${fmt(jornada.fimExpediente)}`, margin, y);
-  //     y += 16;
-
-  //     const dist = (calcularDistanciaTotal() / 1000).toFixed(2);
-  //     pdf.text(`Distância total: ${dist} km`, margin, y);
-  //     y += 26;
-
-  //     pdf.line(margin, y, 555, y);
-  //     y += 20;
-
-  //     /* -------------------------------------------
-  //      *  TABELA DE ATENDIMENTOS
-  //      * ------------------------------------------- */
-  //     pdf.setFont("Helvetica", "bold");
-  //     pdf.setFontSize(14);
-  //     pdf.text("Atendimentos", margin, y);
-  //     y += 20;
-
-  //     if (jornada.atendimentos.length === 0) {
-  //       pdf.setFont("Helvetica", "normal");
-  //       pdf.text("Nenhum atendimento registrado.", margin, y);
-  //       y += 30;
-  //     } else {
-  //       autoTable(pdf, {
-  //         startY: y,
-  //         margin: { left: margin },
-  //         headStyles: { fillColor: [30, 60, 110] },
-  //         head: [["OS", "Início", "Fim", "Endereço"]],
-  //         body: jornada.atendimentos.map((att) => [
-  //           `OS ${att.ordemTipo}-${att.ordemNumero}`,
-  //           fmt(att.atendimentoInicio),
-  //           fmt(att.finalizadoEm),
-  //           `${att.endereco?.rua || ""} ${att.endereco?.numero || ""} - ${att.endereco?.bairro || ""
-  //           } - ${att.endereco?.cidade || ""}`,
-  //         ]),
-  //       });
-
-  //       y = pdf.lastAutoTable.finalY + 30;
-  //     }
-
-  //     /* -------------------------------------------
-  //      *  FOTOS
-  //      * ------------------------------------------- */
-  //     pdf.setFont("Helvetica", "bold");
-  //     pdf.setFontSize(14);
-  //     pdf.text("Fotos dos Atendimentos", margin, y);
-  //     y += 20;
-
-  //     if (
-  //       !jornada.atendimentos.some(
-  //         (att) => att.fotos && att.fotos.length > 0
-  //       )
-  //     ) {
-  //       pdf.setFont("Helvetica", "normal");
-  //       pdf.text("Nenhuma foto registrada.", margin, y);
-  //       y += 30;
-  //     } else {
-  //       for (const att of jornada.atendimentos) {
-  //         if (!att.fotos || att.fotos.length === 0) continue;
-
-  //         pdf.setFont("Helvetica", "bold");
-  //         pdf.text(
-  //           `OS ${att.ordemTipo}-${att.ordemNumero}`,
-  //           margin,
-  //           y
-  //         );
-  //         y += 16;
-
-  //         let x = margin;
-
-  //         for (const f of att.fotos) {
-  //           if (y > 750) {
-  //             pdf.addPage();
-  //             y = margin;
-  //           }
-
-  //           const img = f.url;
-  //           pdf.addImage(img, "JPEG", x, y, 90, 90);
-
-  //           x += 100;
-  //           if (x > 450) {
-  //             x = margin;
-  //             y += 100;
-  //           }
-  //         }
-
-  //         y += 110;
-  //       }
-  //     }
-
-  //     /* -------------------------------------------
-  //      *  ASSINATURA
-  //      * ------------------------------------------- */
-  //     const pageHeight = pdf.internal.pageSize.getHeight();
-
-  //     // verifica se cabe a assinatura na página atual (120px + margem)
-  //     if (y + 160 > pageHeight - margin) {
-  //       pdf.addPage();
-  //       y = margin;
-  //     }
-
-  //     pdf.setFont("Helvetica", "bold");
-  //     pdf.setFontSize(14);
-  //     pdf.text("Assinatura do Técnico", margin, y);
-  //     y += 20;
-
-  //     if (!signatureEnabled) {
-  //       pdf.setFont("Helvetica", "normal");
-  //       pdf.text("Não assinada.", margin, y);
-  //     } else {
-  //       const assinatura = sigRef.current.toDataURL("image/png");
-  //       pdf.addImage(assinatura, "PNG", margin, y, 200, 120);
-  //     }
-
-  //     /* -------------------------------------------
-  //      *  SALVAR PDF
-  //      * ------------------------------------------- */
-  //     pdf.save(`RDO_${jornada.date}.pdf`);
-
-  //     alert("PDF gerado com sucesso!");
-  //   } catch (err) {
-  //     console.error("Erro ao gerar PDF:", err);
-  //     alert("Erro ao gerar PDF.");
-  //   }
-  // };
-
   /* ===================New Expoert PDF antigo acima =============== */
 
   const exportPreviewAsPdf = async () => {
@@ -2354,6 +2219,101 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
   };
 
 
+  // ===== Gerar PDF a partir de uma jornada salva (Histórico) =====
+  const exportJornadaAsPdf = async (j) => {
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
+
+      const margin = 40;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let y = margin;
+
+      const addSpace = (h = 40) => {
+        if (y + h > pageHeight - margin) {
+          pdf.addPage();
+          y = margin;
+        }
+      };
+
+      // ---------- Cabeçalho ----------
+      pdf.setFont("Helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text("RDO - Relatório Diário de Operações", margin, y);
+      y += 26;
+
+      pdf.setFontSize(12);
+      pdf.setFont("Helvetica", "normal");
+
+      const { atendimentoMs, deslocamentoMs } = calcularTotaisFromJornada(j);
+      const jornadaMs = calcularJornadaTotalFromJornada(j);
+      const distTotalKm = (calcularDistanciaTotalFromJornada(j) / 1000).toFixed(2);
+
+      const headerLines = [
+        `Data: ${j.date}`,
+        `Início expediente: ${fmt(j.inicioExpediente)}`,
+        `Fim expediente: ${fmt(j.fimExpediente)}`,
+        `Jornada total: ${msToHuman(jornadaMs)}`,
+        `Tempo de atendimento: ${msToHuman(atendimentoMs)}`,
+        `Tempo de deslocamento: ${msToHuman(deslocamentoMs)}`,
+        `Distância total: ${distTotalKm} km`,
+      ];
+
+      headerLines.forEach((line) => {
+        addSpace(18);
+        pdf.text(line, margin, y);
+        y += 16;
+      });
+
+      addSpace(20);
+      pdf.line(margin, y, 555, y);
+      y += 20;
+
+      // ---------- Tabela de atendimentos ----------
+      pdf.setFont("Helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text("Atendimentos", margin, y);
+      y += 18;
+
+      if (!j.atendimentos || j.atendimentos.length === 0) {
+        pdf.setFont("Helvetica", "normal");
+        pdf.text("Nenhum atendimento registrado neste dia.", margin, y);
+        y += 20;
+      } else {
+        autoTable(pdf, {
+          startY: y,
+          margin: { left: margin },
+          headStyles: { fillColor: [30, 60, 110] },
+          head: [["OS / Nota", "Início", "Fim", "Endereço"]],
+          body: j.atendimentos.map((att) => [
+            att.notaEnviada === "sim"
+              ? `OS ${att.ordemTipo}-${att.ordemNumero}`
+              : "Não informada",
+            fmt(att.atendimentoInicio),
+            fmt(att.finalizadoEm),
+            `${att.endereco?.rua || ""} ${att.endereco?.numero || ""} - ${att.endereco?.bairro || ""
+            } - ${att.endereco?.cidade || ""}`,
+          ]),
+        });
+
+        y = pdf.lastAutoTable.finalY + 20;
+      }
+
+      // (Opcional) você pode incluir almoço / fotos aqui depois, reaproveitando sua lógica atual
+
+      pdf.save(`RDO_${j.date}.pdf`);
+      alert("PDF do dia gerado com sucesso!");
+    } catch (err) {
+      console.error("Erro ao gerar PDF histórico:", err);
+      alert("Erro ao gerar PDF do histórico.");
+    }
+  };
+
+
+
   /* ================== STEP SCREENS ================== */
 
   const Step0_IniciarJornada = (
@@ -2483,35 +2443,35 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
       {/* ------------------- CAMPOS SE (SIM) ------------------- */}
       {notaEnviada === "sim" && (
         <>
-          
+
 
           <Field>
-  <Label>Prefixo / Tipo da OS</Label>
+            <Label>Prefixo / Tipo da OS</Label>
 
-  {current.tipo === "interno" ? (
-    <Input readOnly value="100000" />
-  ) : (
-    <Select
-      value={current.ordemTipo}
-      onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
-      style={{
-        borderColor:
-          current.ordemTipo === "" ? "#f87171" : "#00396b",
-      }}
-    >
-      <option value="">Selecione...</option>
-      <option value="3">3</option>
-      <option value="7">7</option>
-      <option value="100000">100000</option>
-    </Select>
-  )}
+            {current.tipo === "interno" ? (
+              <Input readOnly value="100000" />
+            ) : (
+              <Select
+                value={current.ordemTipo}
+                onChange={(e) => updateCurrentField("ordemTipo", e.target.value)}
+                style={{
+                  borderColor:
+                    current.ordemTipo === "" ? "#f87171" : "#00396b",
+                }}
+              >
+                <option value="">Selecione...</option>
+                <option value="3">3</option>
+                <option value="7">7</option>
+                <option value="100000">100000</option>
+              </Select>
+            )}
 
-  {current.tipo !== "interno" && current.ordemTipo === "" && (
-    <div style={{ color: "#f87171", marginTop: 4 }}>
-      * Escolha um prefixo
-    </div>
-  )}
-</Field>
+            {current.tipo !== "interno" && current.ordemTipo === "" && (
+              <div style={{ color: "#f87171", marginTop: 4 }}>
+                * Escolha um prefixo
+              </div>
+            )}
+          </Field>
 
 
           <Field>
@@ -2770,220 +2730,220 @@ const [historicoDataFiltro, setHistoricoDataFiltro] = useState(""); // YYYY-MM-D
     </motion.div>
   );
 
- /* ================== Step 6: Atendimento em andamento ================== */
-const Step6_AtendimentoAtivo = (
-  <motion.div
-    key="s6"
-    initial={{ x: 20, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    exit={{ x: -20, opacity: 0 }}
-    transition={{ duration: 0.24 }}
-  >
-    {/* BLOQUEIO ALMOÇO */}
-    {current.pausadoParaAlmoco && (
-      <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
-        <strong style={{ color: "#f59e0b" }}>
-          Atendimento pausado para almoço
-        </strong>
-        <br />
-        Finalize o almoço para continuar.
-      </Card>
-    )}
+  /* ================== Step 6: Atendimento em andamento ================== */
+  const Step6_AtendimentoAtivo = (
+    <motion.div
+      key="s6"
+      initial={{ x: 20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -20, opacity: 0 }}
+      transition={{ duration: 0.24 }}
+    >
+      {/* BLOQUEIO ALMOÇO */}
+      {current.pausadoParaAlmoco && (
+        <Card style={{ marginTop: 12, padding: 12, borderColor: "#f59e0b" }}>
+          <strong style={{ color: "#f59e0b" }}>
+            Atendimento pausado para almoço
+          </strong>
+          <br />
+          Finalize o almoço para continuar.
+        </Card>
+      )}
 
-    {!current.pausadoParaAlmoco && (
-      <Field>
-        <Label>Atendimento</Label>
+      {!current.pausadoParaAlmoco && (
+        <Field>
+          <Label>Atendimento</Label>
 
-        <div style={{ color: "#9fb4c9", marginBottom: 12 }}>
-          Responda as perguntas antes de finalizar o atendimento.
-        </div>
+          <div style={{ color: "#9fb4c9", marginBottom: 12 }}>
+            Responda as perguntas antes de finalizar o atendimento.
+          </div>
 
-        {/* ============================================================
+          {/* ============================================================
            PERGUNTA 1 — COMENTÁRIO
         ============================================================ */}
-        <Card style={{ marginTop: 10, padding: 12 }}>
-          <strong style={{ color: "#dbeafe" }}>
-            Deseja inserir um comentário?
-          </strong>
+          <Card style={{ marginTop: 10, padding: 12 }}>
+            <strong style={{ color: "#dbeafe" }}>
+              Deseja inserir um comentário?
+            </strong>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <BigBtn
-              style={{
-                flex: 1,
-                background:
-                  querComentario === "sim" ? "#38bdf8" : "transparent",
-                borderColor:
-                  querComentario === "sim" ? "#38bdf8" : "#1e3a8a",
-                color: querComentario === "sim" ? "#082f49" : "#dbeafe",
-              }}
-              onClick={() => setQuerComentario("sim")}
-            >
-              Sim
-            </BigBtn>
-
-            <BigBtn
-              style={{
-                flex: 1,
-                background:
-                  querComentario === "nao" ? "#38bdf8" : "transparent",
-                borderColor:
-                  querComentario === "nao" ? "#38bdf8" : "#1e3a8a",
-                color: querComentario === "nao" ? "#082f49" : "#dbeafe",
-              }}
-              onClick={() => {
-                setQuerComentario("nao");
-                updateCurrentField("comentario", "");
-              }}
-            >
-              Não
-            </BigBtn>
-          </div>
-
-          {querComentario === "sim" && (
-            <textarea
-              value={current.comentario || ""}
-              onChange={(e) => updateCurrentField("comentario", e.target.value)}
-              placeholder="Digite seu comentário..."
-              style={{
-                width: "100%",
-                minHeight: 100,
-                marginTop: 14,
-                padding: 12,
-                background: "#0a1a2a",
-                color: "#e5f0ff",
-                border: "1px solid #1e3a8a",
-                borderRadius: 10,
-                fontSize: "1rem",
-                outline: "none",
-              }}
-            />
-          )}
-        </Card>
-
-        {/* ============================================================
-           PERGUNTA 2 — FOTOS
-        ============================================================ */}
-        <Card style={{ marginTop: 14, padding: 12 }}>
-          <strong style={{ color: "#dbeafe" }}>Deseja incluir fotos?</strong>
-
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <BigBtn
-              style={{
-                flex: 1,
-                background: querFotos === "sim" ? "#38bdf8" : "transparent",
-                borderColor: querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
-                color: querFotos === "sim" ? "#082f49" : "#dbeafe",
-              }}
-              onClick={() => setQuerFotos("sim")}
-            >
-              Sim
-            </BigBtn>
-
-            <BigBtn
-              style={{
-                flex: 1,
-                background: querFotos === "nao" ? "#38bdf8" : "transparent",
-                borderColor: querFotos === "nao" ? "#38bdf8" : "#1e3a8a",
-                color: querFotos === "nao" ? "#082f49" : "#dbeafe",
-              }}
-              onClick={() => {
-                setQuerFotos("nao");
-                updateCurrentField("fotos", []);
-                setFotosPreview([]);
-              }}
-            >
-              Não
-            </BigBtn>
-          </div>
-
-          {querFotos === "sim" && (
-            <div style={{ marginTop: 16 }}>
-              {/* Botão estilizado */}
-              <label
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <BigBtn
                 style={{
-                  display: "inline-block",
-                  background: "#0ea5e9",
-                  padding: "10px 16px",
-                  borderRadius: 10,
-                  color: "#082f49",
-                  cursor: "pointer",
-                  fontWeight: 600,
+                  flex: 1,
+                  background:
+                    querComentario === "sim" ? "#38bdf8" : "transparent",
+                  borderColor:
+                    querComentario === "sim" ? "#38bdf8" : "#1e3a8a",
+                  color: querComentario === "sim" ? "#082f49" : "#dbeafe",
+                }}
+                onClick={() => setQuerComentario("sim")}
+              >
+                Sim
+              </BigBtn>
+
+              <BigBtn
+                style={{
+                  flex: 1,
+                  background:
+                    querComentario === "nao" ? "#38bdf8" : "transparent",
+                  borderColor:
+                    querComentario === "nao" ? "#38bdf8" : "#1e3a8a",
+                  color: querComentario === "nao" ? "#082f49" : "#dbeafe",
+                }}
+                onClick={() => {
+                  setQuerComentario("nao");
+                  updateCurrentField("comentario", "");
                 }}
               >
-                Tirar / Selecionar fotos
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    const arr = files.map((f) => ({
-                      file: f,
-                      url: URL.createObjectURL(f),
-                    }));
+                Não
+              </BigBtn>
+            </div>
 
-                    updateCurrentField("fotos", arr);
-                    setFotosPreview(arr);
-                  }}
-                />
-              </label>
+            {querComentario === "sim" && (
+              <textarea
+                value={current.comentario || ""}
+                onChange={(e) => updateCurrentField("comentario", e.target.value)}
+                placeholder="Digite seu comentário..."
+                style={{
+                  width: "100%",
+                  minHeight: 100,
+                  marginTop: 14,
+                  padding: 12,
+                  background: "#0a1a2a",
+                  color: "#e5f0ff",
+                  border: "1px solid #1e3a8a",
+                  borderRadius: 10,
+                  fontSize: "1rem",
+                  outline: "none",
+                }}
+              />
+            )}
+          </Card>
 
-              {/* Prévia das fotos */}
-              {fotosPreview.length > 0 && (
-                <div
+          {/* ============================================================
+           PERGUNTA 2 — FOTOS
+        ============================================================ */}
+          <Card style={{ marginTop: 14, padding: 12 }}>
+            <strong style={{ color: "#dbeafe" }}>Deseja incluir fotos?</strong>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <BigBtn
+                style={{
+                  flex: 1,
+                  background: querFotos === "sim" ? "#38bdf8" : "transparent",
+                  borderColor: querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
+                  color: querFotos === "sim" ? "#082f49" : "#dbeafe",
+                }}
+                onClick={() => setQuerFotos("sim")}
+              >
+                Sim
+              </BigBtn>
+
+              <BigBtn
+                style={{
+                  flex: 1,
+                  background: querFotos === "nao" ? "#38bdf8" : "transparent",
+                  borderColor: querFotos === "nao" ? "#38bdf8" : "#1e3a8a",
+                  color: querFotos === "nao" ? "#082f49" : "#dbeafe",
+                }}
+                onClick={() => {
+                  setQuerFotos("nao");
+                  updateCurrentField("fotos", []);
+                  setFotosPreview([]);
+                }}
+              >
+                Não
+              </BigBtn>
+            </div>
+
+            {querFotos === "sim" && (
+              <div style={{ marginTop: 16 }}>
+                {/* Botão estilizado */}
+                <label
                   style={{
-                    marginTop: 14,
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 10,
+                    display: "inline-block",
+                    background: "#0ea5e9",
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    color: "#082f49",
+                    cursor: "pointer",
+                    fontWeight: 600,
                   }}
                 >
-                  {fotosPreview.map((f, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        width: 82,
-                        height: 82,
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        border: "1px solid #1e3a8a",
-                      }}
-                    >
-                      <img
-                        src={f.url}
-                        alt=""
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
+                  Tirar / Selecionar fotos
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      const arr = files.map((f) => ({
+                        file: f,
+                        url: URL.createObjectURL(f),
+                      }));
 
-        {/* ============================================================
+                      updateCurrentField("fotos", arr);
+                      setFotosPreview(arr);
+                    }}
+                  />
+                </label>
+
+                {/* Prévia das fotos */}
+                {fotosPreview.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                    }}
+                  >
+                    {fotosPreview.map((f, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          width: 82,
+                          height: 82,
+                          borderRadius: 10,
+                          overflow: "hidden",
+                          border: "1px solid #1e3a8a",
+                        }}
+                      >
+                        <img
+                          src={f.url}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {/* ============================================================
            FINALIZAR ATENDIMENTO
         ============================================================ */}
-        <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-          <BigBtn
-            $primary
-            onClick={concluirAtendimento}
-            style={{ width: "100%" }}
-          >
-            Finalizar atendimento
-          </BigBtn>
-        </div>
-      </Field>
-    )}
-  </motion.div>
-);
+          <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+            <BigBtn
+              $primary
+              onClick={concluirAtendimento}
+              style={{ width: "100%" }}
+            >
+              Finalizar atendimento
+            </BigBtn>
+          </div>
+        </Field>
+      )}
+    </motion.div>
+  );
 
 
   /* ================== Step 7: Atendimento concluído ================== */
@@ -3431,93 +3391,153 @@ const Step6_AtendimentoAtivo = (
   };
 
 
-  // ========================== 
+  // ===== Helpers para jornadas salvas (Histórico / Meus Atendimentos) =====
 
-// Junta jornada atual + jornadas salvas para o Painel "Meus atendimentos"
-const getTodasJornadas = () => {
-  const lista = [];
+  const calcularTotaisFromJornada = (j) => {
+    let atendimentoMs = 0;
+    let deslocamentoMs = 0;
 
-  // Jornada atual (se já iniciou expediente)
-  if (jornada.inicioExpediente) {
-    lista.push({
-      ...jornada,
-      isHoje: true,
-      label: `Jornada de hoje (${jornada.date})`,
+    (j.atendimentos || []).forEach((a, i) => {
+      atendimentoMs += calcDuration(a.atendimentoInicio, a.finalizadoEm);
+      deslocamentoMs += calcDuration(a.deslocamentoInicio, a.atendimentoInicio);
+
+      const next = j.atendimentos[i + 1];
+      if (next && a.finalizadoEm && next.deslocamentoInicio) {
+        deslocamentoMs += calcDuration(a.finalizadoEm, next.deslocamentoInicio);
+      }
     });
-  }
 
-  // Jornadas encerradas salvas no localStorage
-  (savedJourneys || []).forEach((j) => {
-    lista.push({
-      ...j,
-      isHoje: false,
-      label: `Jornada ${j.date}`,
-    });
-  });
-
-  // ordena da mais recente para a mais antiga
-  return lista.sort(
-    (a, b) => new Date(b.date + "T00:00:00") - new Date(a.date + "T00:00:00")
-  );
-};
-
-// Calcula distância total para uma jornada qualquer
-const calcularDistanciaTotalDe = (jor) => {
-  let tot = 0;
-
-  (jor.atendimentos || []).forEach((a) => {
-    if (a.rota && a.rota.length > 1) {
-      for (let i = 1; i < a.rota.length; i++) {
-        tot += haversine(a.rota[i - 1], a.rota[i]);
+    const logs = j.baseLogs || [];
+    for (let i = 0; i < logs.length; i += 2) {
+      const ini = logs[i];
+      const fim = logs[i + 1];
+      if (
+        ini &&
+        fim &&
+        ini.tipo === "deslocamentoParaBase" &&
+        fim.tipo === "chegadaBase"
+      ) {
+        deslocamentoMs += calcDuration(ini.time, fim.time);
       }
     }
-  });
 
-  const logs = jor.baseLogs || [];
-  for (let i = 1; i < logs.length; i++) {
-    const p1 = logs[i - 1].gps;
-    const p2 = logs[i].gps;
-    if (p1 && p2 && p1.lat && p2.lat) {
-      tot += haversine(p1, p2);
+    return { atendimentoMs, deslocamentoMs };
+  };
+
+  const calcularJornadaTotalFromJornada = (j) =>
+    calcDuration(j.inicioExpediente, j.fimExpediente);
+
+  const calcularDistanciaTotalFromJornada = (j) => {
+    let tot = 0;
+
+    // 1) Rota real dos atendimentos
+    (j.atendimentos || []).forEach((a) => {
+      if (a.rota && a.rota.length > 1) {
+        for (let i = 1; i < a.rota.length; i++) {
+          tot += haversine(a.rota[i - 1], a.rota[i]);
+        }
+      }
+    });
+
+    // 2) Logs da base
+    const logs = j.baseLogs || [];
+    for (let i = 1; i < logs.length; i++) {
+      const p1 = logs[i - 1].gps;
+      const p2 = logs[i].gps;
+      if (p1 && p2 && p1.lat && p2.lat) {
+        tot += haversine(p1, p2);
+      }
     }
-  }
 
-  return Math.round(tot);
-};
+    return Math.round(tot);
+  };
 
-const calcularTotaisDe = (jor) => {
-  let atendimentoMs = 0;
-  let deslocamentoMs = 0;
+  // Junta jornada atual + jornadas salvas para o Painel "Meus atendimentos"
+  const getTodasJornadas = () => {
+    const lista = [];
 
-  (jor.atendimentos || []).forEach((a, i) => {
-    atendimentoMs += calcDuration(a.atendimentoInicio, a.finalizadoEm);
-    deslocamentoMs += calcDuration(a.deslocamentoInicio, a.atendimentoInicio);
-
-    const next = jor.atendimentos[i + 1];
-    if (next && a.finalizadoEm && next.deslocamentoInicio) {
-      deslocamentoMs += calcDuration(a.finalizadoEm, next.deslocamentoInicio);
+    // Jornada atual (se já iniciou expediente)
+    if (jornada.inicioExpediente) {
+      lista.push({
+        ...jornada,
+        isHoje: true,
+        label: `Jornada de hoje (${jornada.date})`,
+      });
     }
-  });
 
-  const logs = jor.baseLogs || [];
-  for (let i = 0; i < logs.length; i += 2) {
-    const ini = logs[i];
-    const fim = logs[i + 1];
-    if (
-      ini &&
-      fim &&
-      ini.tipo === "deslocamentoParaBase" &&
-      fim.tipo === "chegadaBase"
-    ) {
-      deslocamentoMs += calcDuration(ini.time, fim.time);
+    // Jornadas encerradas salvas no localStorage
+    (savedJourneys || []).forEach((j) => {
+      lista.push({
+        ...j,
+        isHoje: false,
+        label: `Jornada ${j.date}`,
+      });
+    });
+
+    // ordena da mais recente para a mais antiga
+    return lista.sort(
+      (a, b) => new Date(b.date + "T00:00:00") - new Date(a.date + "T00:00:00")
+    );
+  };
+
+  // Calcula distância total para uma jornada qualquer
+  const calcularDistanciaTotalDe = (jor) => {
+    let tot = 0;
+
+    (jor.atendimentos || []).forEach((a) => {
+      if (a.rota && a.rota.length > 1) {
+        for (let i = 1; i < a.rota.length; i++) {
+          tot += haversine(a.rota[i - 1], a.rota[i]);
+        }
+      }
+    });
+
+    const logs = jor.baseLogs || [];
+    for (let i = 1; i < logs.length; i++) {
+      const p1 = logs[i - 1].gps;
+      const p2 = logs[i].gps;
+      if (p1 && p2 && p1.lat && p2.lat) {
+        tot += haversine(p1, p2);
+      }
     }
-  }
 
-  return { atendimentoMs, deslocamentoMs };
-};
+    return Math.round(tot);
+  };
 
-const calcularJornadaTotalDe = (jor) =>
-  calcDuration(jor.inicioExpediente, jor.fimExpediente);
+  const calcularTotaisDe = (jor) => {
+    let atendimentoMs = 0;
+    let deslocamentoMs = 0;
+
+    (jor.atendimentos || []).forEach((a, i) => {
+      atendimentoMs += calcDuration(a.atendimentoInicio, a.finalizadoEm);
+      deslocamentoMs += calcDuration(a.deslocamentoInicio, a.atendimentoInicio);
+
+      const next = jor.atendimentos[i + 1];
+      if (next && a.finalizadoEm && next.deslocamentoInicio) {
+        deslocamentoMs += calcDuration(a.finalizadoEm, next.deslocamentoInicio);
+      }
+    });
+
+    const logs = jor.baseLogs || [];
+
+    for (let i = 0; i < logs.length; i += 2) {
+      const ini = logs[i];
+      const fim = logs[i + 1];
+      if (
+        ini &&
+        fim &&
+        ini.tipo === "deslocamentoParaBase" &&
+        fim.tipo === "chegadaBase"
+      ) {
+        deslocamentoMs += calcDuration(ini.time, fim.time);
+      }
+    }
+
+    return { atendimentoMs, deslocamentoMs };
+  };
+
+  const calcularJornadaTotalDe = (jor) =>
+    calcDuration(jor.inicioExpediente, jor.fimExpediente);
 
 
 
@@ -3566,10 +3586,32 @@ const calcularJornadaTotalDe = (jor) =>
   //   );
   // })();
 
-    const PainelView = (() => {
-    const { atendimentoMs, deslocamentoMs } = calcularTotais();
-    const jornadaMs = calcularJornadaTotal();
-    const distTotalKm = (calcularDistanciaTotal() / 1000).toFixed(2);
+  // Ícone de Download (caso não use o Lucide)
+  const DownloadIconStub = () => (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      style={{ marginRight: 2 }}
+    >
+      <path
+        d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14"
+        stroke="currentColor"
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
+
+
+
+  const PainelView = (() => {
+    // const { atendimentoMs, deslocamentoMs } = calcularTotais();
+    // const jornadaMs = calcularJornadaTotal();
+    // const distTotalKm = (calcularDistanciaTotal() / 1000).toFixed(2);
 
     const renderKpiCards = () => (
       <div
@@ -3580,13 +3622,13 @@ const calcularJornadaTotalDe = (jor) =>
           marginBottom: 14,
         }}
       >
-        <Card>
+        {/* <Card>
           <strong>Jornada</strong>
           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
             {msToHuman(jornadaMs)}
           </div>
-        </Card>
-
+        </Card> */}
+        {/* 
         <Card>
           <strong>Atendimento</strong>
           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
@@ -3609,7 +3651,7 @@ const calcularJornadaTotalDe = (jor) =>
           <div style={{ color: "#7dd3fc", marginTop: 6 }}>
             {distTotalKm} km
           </div>
-        </Card>
+        </Card> */}
       </div>
     );
 
@@ -3811,23 +3853,13 @@ const calcularJornadaTotalDe = (jor) =>
                 >
                   {/* TODO: integrar com visualização/edição de RDO por dia */}
                   <BigBtn
-                    onClick={() => {
-                      alert(
-                        "Aqui você poderá abrir a visualização do RDO completo desta jornada."
-                      );
-                    }}
-                  >
+                    onClick={() => setRdoHistoricoView(j)}>
+
                     <FileText size={16} />
                     Ver RDO
                   </BigBtn>
 
-                  <BigBtn
-                    onClick={() => {
-                      alert(
-                        "Aqui você poderá gerar/baixar o PDF desta jornada (RDO)."
-                      );
-                    }}
-                  >
+                  <BigBtn onClick={() => exportJornadaAsPdf(j)}>
                     <DownloadIconStub />
                     Baixar PDF
                   </BigBtn>
@@ -3936,6 +3968,45 @@ const calcularJornadaTotalDe = (jor) =>
   })();
 
 
+  const renderRDOForJornada = (j) => (
+    <div style={{ color: "#cbd5e1", fontSize: 14 }}>
+      <div>
+        <strong>Data:</strong> {j.date}
+      </div>
+      <div>
+        <strong>Início:</strong> {fmt(j.inicioExpediente)}
+      </div>
+      <div>
+        <strong>Fim:</strong> {fmt(j.fimExpediente)}
+      </div>
+
+      <hr style={{ margin: "12px 0", borderColor: "#1e293b" }} />
+
+      <strong>Atendimentos:</strong>
+      <br />
+
+      {j.atendimentos.length === 0 && (
+        <div>Nenhum atendimento registrado.</div>
+      )}
+
+      {j.atendimentos.map((a) => (
+        <div key={a.id} style={{ marginTop: 8 }}>
+          <strong>
+            {a.notaEnviada === "sim"
+              ? `OS ${a.ordemTipo}-${a.ordemNumero}`
+              : "Nota não informada"}
+          </strong>
+          <br />
+          Início: {fmt(a.atendimentoInicio)} <br />
+          Fim: {fmt(a.finalizadoEm)} <br />
+          Endereço: {a.endereco?.rua || ""} {a.endereco?.numero || ""}
+        </div>
+      ))}
+    </div>
+  );
+
+
+
   /* ========== RDO / Preview + Assinatura ========== */
   const confirmarEncerrarJornada = () => {
     const assinatura = sigRef.current?.toDataURL();
@@ -4034,6 +4105,289 @@ const calcularJornadaTotalDe = (jor) =>
       return { ...j, almocos };
     });
   };
+
+  /* ========== Meus Atendimentos (Histórico) ========== */
+  // const MeusAtendimentosView = (() => {
+  //   // filtra jornadas salvas pela data escolhida
+  //   const jornadasDoDia = savedJourneys.filter(
+  //     (j) => j.date === historicoDate
+  //   );
+
+  //   const jornadaSelecionada = jornadasDoDia[0] || null;
+
+  //   return (
+  //     <div style={{ padding: 12 }}>
+  //       <h3 style={{ color: "#f59e0b", marginBottom: 8 }}>Meus atendimentos</h3>
+
+  //       {/* Filtro por data */}
+  //       <Field>
+  //         <Label>Selecione a data</Label>
+  //         <Input
+  //           type="date"
+  //           value={historicoDate}
+  //           onChange={(e) => setHistoricoDate(e.target.value)}
+  //         />
+  //       </Field>
+
+  //       {!jornadaSelecionada && (
+  //         <Card style={{ marginTop: 10 }}>
+  //           <div style={{ color: "#94a3b8" }}>
+  //             Nenhuma jornada encontrada para esta data.
+  //           </div>
+  //         </Card>
+  //       )}
+
+  //       {jornadaSelecionada && (
+  //         <>
+  //           {/* Resumo da jornada */}
+  //           <Card style={{ marginTop: 10 }}>
+  //             <strong>Resumo do dia</strong>
+  //             <div style={{ color: "#9fb4c9", marginTop: 6 }}>
+  //               Início: {fmt(jornadaSelecionada.inicioExpediente)} <br />
+  //               Fim: {fmt(jornadaSelecionada.fimExpediente)} <br />
+  //             </div>
+
+  //             {(() => {
+  //               const { atendimentoMs, deslocamentoMs } =
+  //                 calcularTotaisFromJornada(jornadaSelecionada);
+  //               const jornadaMs =
+  //                 calcularJornadaTotalFromJornada(jornadaSelecionada);
+  //               const distKm = (
+  //                 calcularDistanciaTotalFromJornada(jornadaSelecionada) / 1000
+  //               ).toFixed(2);
+
+
+
+
+
+  //               return (
+  //                 <div
+  //                   style={{
+  //                     display: "grid",
+  //                     gridTemplateColumns: "1fr 1fr",
+  //                     gap: 8,
+  //                     marginTop: 10,
+  //                   }}
+  //                 >
+  //                   <Card>
+  //                     <strong>Jornada</strong>
+  //                     <div style={{ color: "#7dd3fc", marginTop: 4 }}>
+  //                       {msToHuman(jornadaMs)}
+  //                     </div>
+  //                   </Card>
+
+  //                   <Card>
+  //                     <strong>Atendimento</strong>
+  //                     <div style={{ color: "#7dd3fc", marginTop: 4 }}>
+  //                       {msToHuman(atendimentoMs)}
+  //                     </div>
+  //                   </Card>
+
+  //                   <Card>
+  //                     <strong>Deslocamento</strong>
+  //                     <div style={{ color: "#7dd3fc", marginTop: 4 }}>
+  //                       {msToHuman(deslocamentoMs)}
+  //                     </div>
+  //                   </Card>
+
+  //                   <Card>
+  //                     <strong>Distância total</strong>
+  //                     <div style={{ color: "#7dd3fc", marginTop: 4 }}>
+  //                       {distKm} km
+  //                     </div>
+  //                   </Card>
+  //                 </div>
+  //               );
+  //             })()}
+
+  //             <div style={{ marginTop: 10 }}>
+  //               <BigBtn onClick={() => exportJornadaAsPdf(j)}>
+  //                 Baixar RDO (PDF)
+  //               </BigBtn>
+  //             </div>
+  //           </Card>
+
+  //           {/* Lista de atendimentos */}
+  //           <div style={{ marginTop: 14 }}>
+  //             <h4 style={{ color: "#dbeafe" }}>Atendimentos do dia</h4>
+
+  //             {jornadaSelecionada.atendimentos.length === 0 && (
+  //               <div style={{ color: "#94a3b8", marginTop: 6 }}>
+  //                 Nenhum atendimento registrado.
+  //               </div>
+  //             )}
+
+  //             {jornadaSelecionada.atendimentos.map((att) => {
+  //               const isEditing =
+  //                 editingOs &&
+  //                 editingOs.jornadaId === jornadaSelecionada.id &&
+  //                 editingOs.atendimentoId === att.id;
+
+  //               return (
+  //                 <Card
+  //                   key={att.id}
+  //                   style={{ marginTop: 10, border: "1px solid #00396b" }}
+  //                 >
+  //                   <strong>
+  //                     OS / Nota:&nbsp;
+  //                     {att.notaEnviada === "sim" &&
+  //                       att.ordemTipo &&
+  //                       att.ordemNumero
+  //                       ? `${att.ordemTipo}-${att.ordemNumero}`
+  //                       : "Não informada"}
+  //                   </strong>
+
+  //                   <div style={{ color: "#9fb4c9", marginTop: 4 }}>
+  //                     Início: {fmt(att.atendimentoInicio)} <br />
+  //                     Fim: {fmt(att.finalizadoEm)} <br />
+  //                     Endereço:{" "}
+  //                     {att.endereco?.rua || "—"}{" "}
+  //                     {att.endereco?.numero || ""} -{" "}
+  //                     {att.endereco?.bairro || ""} -{" "}
+  //                     {att.endereco?.cidade || ""}
+  //                   </div>
+
+  //                   {/* Botões principais */}
+  //                   {!isEditing && (
+  //                     <div
+  //                       style={{
+  //                         display: "flex",
+  //                         gap: 8,
+  //                         marginTop: 10,
+  //                         flexWrap: "wrap",
+  //                       }}
+  //                     >
+  //                       <BigBtn
+  //                         onClick={() =>
+  //                           setEditingOs({
+  //                             jornadaId: jornadaSelecionada.id,
+  //                             atendimentoId: att.id,
+  //                             prefixo: att.ordemTipo || "",
+  //                             numero: att.ordemNumero || "",
+  //                           })
+  //                         }
+  //                       >
+  //                         Editar OS
+  //                       </BigBtn>
+  //                     </div>
+  //                   )}
+
+  //                   {/* Área de edição de OS */}
+  //                   {isEditing && (
+  //                     <div
+  //                       style={{
+  //                         marginTop: 10,
+  //                         paddingTop: 8,
+  //                         borderTop: "1px solid #1e293b",
+  //                       }}
+  //                     >
+  //                       <div
+  //                         style={{
+  //                           display: "flex",
+  //                           gap: 8,
+  //                           marginBottom: 8,
+  //                           flexWrap: "wrap",
+  //                         }}
+  //                       >
+  //                         <div style={{ flex: 1, minWidth: 120 }}>
+  //                           <Label>Prefixo</Label>
+  //                           <Input
+  //                             value={editingOs.prefixo}
+  //                             onChange={(e) =>
+  //                               setEditingOs((prev) => ({
+  //                                 ...prev,
+  //                                 prefixo: e.target.value,
+  //                               }))
+  //                             }
+  //                             placeholder="Ex: 3, 7, 100000"
+  //                           />
+  //                         </div>
+
+  //                         <div style={{ flex: 1, minWidth: 140 }}>
+  //                           <Label>Número (6 dígitos)</Label>
+  //                           <Input
+  //                             inputMode="numeric"
+  //                             value={editingOs.numero}
+  //                             onChange={(e) =>
+  //                               setEditingOs((prev) => ({
+  //                                 ...prev,
+  //                                 numero: e.target.value
+  //                                   .replace(/\D/g, "")
+  //                                   .slice(0, 6),
+  //                               }))
+  //                             }
+  //                             placeholder="000000"
+  //                           />
+  //                         </div>
+  //                       </div>
+
+  //                       <div style={{ display: "flex", gap: 8 }}>
+  //                         <BigBtn
+  //                           onClick={() => {
+  //                             setEditingOs(null);
+  //                           }}
+  //                         >
+  //                           Cancelar
+  //                         </BigBtn>
+
+  //                         <BigBtn
+  //                           $primary
+  //                           onClick={() => {
+  //                             if (
+  //                               !editingOs.prefixo ||
+  //                               !/^\d{6}$/.test(editingOs.numero)
+  //                             ) {
+  //                               alert(
+  //                                 "Informe o prefixo e um número com 6 dígitos."
+  //                               );
+  //                               return;
+  //                             }
+
+  //                             setSavedJourneys((prev) => {
+  //                               const next = prev.map((j) => {
+  //                                 if (j.id !== editingOs.jornadaId) return j;
+
+  //                                 return {
+  //                                   ...j,
+  //                                   atendimentos: j.atendimentos.map((a) =>
+  //                                     a.id === editingOs.atendimentoId
+  //                                       ? {
+  //                                         ...a,
+  //                                         ordemTipo: editingOs.prefixo,
+  //                                         ordemNumero: editingOs.numero,
+  //                                         notaEnviada: "sim",
+  //                                       }
+  //                                       : a
+  //                                   ),
+  //                                 };
+  //                               });
+
+  //                               localStorage.setItem(
+  //                                 SAVED_KEY,
+  //                                 JSON.stringify(next)
+  //                               );
+  //                               return next;
+  //                             });
+
+  //                             setEditingOs(null);
+  //                             alert("OS atualizada com sucesso.");
+  //                           }}
+  //                         >
+  //                           Salvar OS
+  //                         </BigBtn>
+  //                       </div>
+  //                     </div>
+  //                   )}
+  //                 </Card>
+  //               );
+  //             })}
+  //           </div>
+  //         </>
+  //       )}
+  //     </div>
+  //   );
+  // })();
+
 
 
 
@@ -4240,130 +4594,675 @@ const calcularJornadaTotalDe = (jor) =>
 
   /* ========== Render principal ========== */
   return (
-    <Overlay onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-      <Panel
-        key={animKey}
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 30, opacity: 0 }}
-        transition={{ duration: 0.22 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Header>
-          <TitleWrap>
-            <Title>Novo Atendimento — Mobile (Híbrido)</Title>
-            <Sub>
-              {tab === 0
-                ? `Step ${step}/9`
-                : tab === 1
-                  ? "Timeline"
-                  : tab === 2
-                    ? "Painel"
-                    : "RDO"}
-            </Sub>
-          </TitleWrap>
-
-          {/* <CloseBtn onClick={() => onClose?.()}>
-            <X size={20} />
-          </CloseBtn> */}
-        </Header>
-
-        {tab === 0 && (
-          <Progress>
-            <ProgressFill $pct={pct} />
-          </Progress>
-        )}
-
-        {/* ====== BARRA FIXA DE ALMOÇO ====== */}
-        {step !== 0 && (
-          <div
+    <>
+      {rdoHistoricoView && (
+        <Overlay
+          onClick={(e) => e.target === e.currentTarget && setRdoHistoricoView(null)}
+          style={{ zIndex: 1300 }}
+        >
+          <Panel
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ duration: 0.25 }}
             style={{
-              padding: "10px 14px",
-              background: "#0d2234",
-              borderBottom: "1px solid #00396b",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
+              background: rdoIsDark ? "#071827" : "#ffffff",
+              borderColor: rdoIsDark ? "#00396b" : "#cbd5e1",
             }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="RDO do dia"
+            onClick={(e) => e.stopPropagation()}
           >
+            <Body
+              style={{
+                padding: 20,
+                background: rdoIsDark ? "#020617" : "#f8fafc",
+                color: rdoIsDark ? "#e2e8f0" : "#0f172a",
+              }}
+            >
 
-
-            {/* =========== CONTROLES DE ALMOÇO =========== */}
-            {(() => {
-              const ultimo = jornada.almocos[jornada.almocos.length - 1];
-
-              const existeAlmocoValido = jornada.almocos.some(a => {
-                if (!a.fim) return false;
-                return duracaoAlmocoMs(a) >= MIN_ALMOCO_MS;
-              });
-
-              const emCurso = ultimo && ultimo.inicio && !ultimo.fim && !ultimo.suspensoEm;
-              const podeIniciarAlmoco = !emCurso && !existeAlmocoValido;
-
-              return (
+              {/* ========================================================= */}
+              {/* === TELA 1 — VISUALIZAÇÃO NORMAL DO RDO ================== */}
+              {/* ========================================================= */}
+              {!rdoEditOs && (
                 <>
-                  {podeIniciarAlmoco && (
-                    <BigBtn
-                      $primary
-                      onClick={() => {
-                        if (step === 5 || step === 6 || step === 7 || step === 9 || step === 10) {
-                          // deslocamento ativo ou atendimento ativo
-                          setConfirmPauseForLunchOpen(true);
-                          return;
-                        }
-                        iniciarAlmoco();
+               
+               {/* HEADER NOVO */}
+<div
+  style={{
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    marginBottom: 20,
+  }}
+>
+  {/* Linha 1 — Tema + X */}
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    }}
+  >
+    <BigBtn
+      onClick={() =>
+        setRdoTheme((prev) => (prev === "dark" ? "light" : "dark"))
+      }
+      style={{ padding: "6px 14px", fontSize:"1.2rem"}}
+    >
+      Tema: {rdoIsDark ? "Escuro" : "Claro"}
+    </BigBtn>
+
+    <button
+      onClick={() => setRdoHistoricoView(null)}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: rdoIsDark ? "#9ca3af" : "#4b5563",
+        cursor: "pointer",
+        padding: 4,
+      }}
+    >
+      <X size={20} />
+    </button>
+  </div>
+
+  {/* Linha 2 — Subtítulo */}
+  <div
+    style={{
+      fontSize: 18,
+      color: rdoIsDark ? "#9ca3af" : "#475569",
+    }}
+  >
+    Visualização detalhada da jornada e atendimentos.
+  </div>
+
+  {/* Linha 3 — Título */}
+  <h2
+    style={{
+      fontSize: "1.4rem",
+      fontWeight: 700,
+      margin: 0,
+      color: rdoIsDark ? "#e5e7eb" : "#0f172a",
+    }}
+  >
+    RDO — {rdoHistoricoView.date}
+  </h2>
+
+  {/* Linha 4 — Barra + botões */}
+  <div
+    style={{
+      width: "100%",
+      height: 1,
+      background: rdoIsDark ? "#1e293b" : "#cbd5e1",
+      marginTop: 4,
+      marginBottom: 8,
+    }}
+  />
+
+  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <BigBtn onClick={() => exportJornadaAsPdf(rdoHistoricoView)}>
+      Exportar PDF
+    </BigBtn>
+
+    <BigBtn
+      onClick={() => {
+        if (typeof window !== "undefined") window.print();
+      }}
+    >
+      Imprimir
+    </BigBtn>
+  </div>
+</div>
+
+
+                  {/* --- Informações do Expediente --- */}
+                  <div
+                    style={{
+                      background: rdoIsDark ? "#020617" : "#ffffff",
+                      padding: 16,
+                      borderRadius: 10,
+                      marginBottom: 16,
+                      border: rdoIsDark ? "1px solid #1e293b" : "1px solid #e5e7eb",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        color: rdoIsDark ? "#38bdf8" : "#0369a1",
+                        fontSize: 18,
                       }}
                     >
-                      Iniciar Almoço
-                    </BigBtn>
-                  )}
+                      Informações do expediente
+                    </strong>
+                    <div style={{ marginTop: 8, fontSize: 13 }}>
+                      <div>Data: {rdoHistoricoView.date}</div>
+                      <div>Início: {fmt(rdoHistoricoView.inicioExpediente)}</div>
+                      <div>Fim: {fmt(rdoHistoricoView.fimExpediente)}</div>
+                      <div>
+                        Total de atendimentos:{" "}
+                        {rdoHistoricoView.atendimentos?.length || 0}
+                      </div>
+                    </div>
+                  </div>
 
-                  {emCurso && (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <BigBtn
-                        style={{ flex: 1, background: "#0ea5e9", borderColor: "#0ea5e9" }}
-                        onClick={async () => {
-                          const ultimo = jornada.almocos[jornada.almocos.length - 1];
-                          if (!ultimo?.inicio) return;
+                  {/* --- Lista de Atendimentos --- */}
+                  <div>
+                    <strong
+                      style={{
+                        color: rdoIsDark ? "#38bdf8" : "#0369a1",
+                        fontSize: "1.05rem",
+                      }}
+                    >
+                      Atendimentos
+                    </strong>
 
-                          const diff = Date.now() - new Date(ultimo.inicio).getTime();
-                          setTempoAlmocoAtual(diff);
+                    {(!rdoHistoricoView.atendimentos ||
+                      rdoHistoricoView.atendimentos.length === 0) && (
+                        <div style={{ marginTop: 8, fontSize: 13 }}>
+                          Nenhum atendimento registrado para este dia.
+                        </div>
+                      )}
 
-                          if (diff < MIN_ALMOCO_MS) {
-                            setConfirmAlmocoEarlyOpen(true); // << ABRE O MODAL
-                          } else {
-                            finalizarAlmoco();
-                          }
-                        }}
-                      >
-                        Finalizar Almoço
-                      </BigBtn>
-
-                      <BigBtn
+                    {rdoHistoricoView.atendimentos?.map((a) => (
+                      <div
+                        key={a.id}
                         style={{
-                          flex: 1,
-                          background: "#fbbf24",
-                          borderColor: "#f59e0b",
-                          color: "#082f49",
+                          background: rdoIsDark ? "#020617" : "#ffffff",
+                          padding: 16,
+                          borderRadius: 10,
+                          marginTop: 12,
+                          border: rdoIsDark
+                            ? "1px solid #1f2937"
+                            : "1px solid #e5e7eb",
                         }}
-                        onClick={() => setSuspenderAlmocoOpen(true)}
                       >
-                        Suspender Almoço
+                 <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    width: "100%",
+  }}
+>
+  {/* LADO ESQUERDO */}
+  <div
+    style={{
+      color: rdoIsDark ? "#e5e7eb" : "#111827",
+      fontSize: 14,
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+      fontWeight: 600,
+    }}
+  >
+    {/* Linha do tipo */}
+    <span style={{ opacity: 0.9 }}>
+      Serviço: {a.tipo}
+    </span>
+
+    {/* Linha da OS ou nota não informada */}
+    {a.notaEnviada === "sim" ? (
+      <span
+        style={{
+          fontWeight: 700,
+          letterSpacing: 0.3,
+          marginTop: 2,
+        }}
+      >
+        OS {a.ordemTipo}{a.ordemNumero}
+      </span>
+    ) : (
+      <span style={{ opacity: 0.8 }}>Nota não informada</span>
+    )}
+  </div>
+
+  {/* LADO DIREITO — ID */}
+  <div
+    style={{
+      fontSize: 11,
+      color: rdoIsDark ? "#9ca3af" : "#6b7280",
+      whiteSpace: "nowrap",
+      marginLeft: 8,
+    }}
+  >
+    ID: {a.id?.slice?.(0, 6) || "—"}
+  </div>
+</div>
+
+
+                        <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                          <div>Início: {fmt(a.atendimentoInicio)}</div>
+                          <div>Fim: {fmt(a.finalizadoEm)}</div>
+                          <div>
+                            Endereço:{" "}
+                            {[a.endereco?.rua, a.endereco?.numero]
+                              .filter(Boolean)
+                              .join(" ")}{" "}
+                            {[a.endereco?.bairro, a.endereco?.cidade]
+                              .filter(Boolean)
+                              .join(" - ")}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 10,
+                            flexWrap: "wrap",
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <BigBtn
+                            onClick={() => {
+                              setRdoEditOs({
+                                jornadaId: rdoHistoricoView.id,
+                                atendimentoId: a.id,
+                                prefixo: a.ordemTipo || "",
+                                numero: a.ordemNumero || "",
+                                tipo: a.tipo,
+                                atendimento: a,
+                              });
+                            }}
+                          >
+                            Editar OS
+                          </BigBtn>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ========================================================= */}
+              {/* === TELA 2 — EDIÇÃO DE OS (prefixo + número) ============ */}
+              {/* ========================================================= */}
+              {rdoEditOs && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 20,
+                    maxWidth: 520,
+                    margin: "0 auto",
+                  }}
+                >
+                  {/* TÍTULO */}
+                  <div>
+                    <h2
+                      style={{
+                        fontSize: "1.4rem",
+                        fontWeight: 700,
+                        marginBottom: 4,
+                        color: rdoIsDark ? "#e5e7eb" : "#0f172a",
+                      }}
+                    >
+                      Editar OS
+                    </h2>
+
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: rdoIsDark ? "#94a3b8" : "#475569",
+                      }}
+                    >
+                      Atualize o prefixo e o número da ordem de serviço.
+                    </div>
+                  </div>
+
+                  {/* CARD */}
+                  <div
+                    style={{
+                      background: rdoIsDark ? "#0b1623" : "#ffffff",
+                      border: rdoIsDark ? "1px solid #1e293b" : "1px solid #e2e8f0",
+                      padding: 20,
+                      borderRadius: 14,
+                      boxShadow: rdoIsDark
+                        ? "0 0 0 0 rgba(0,0,0,0)"
+                        : "0 4px 14px rgba(0,0,0,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 16,
+                    }}
+                  >
+                    {/* CAMPOS */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 16,
+                      }}
+                    >
+                      {/* CAMPO PREFIXO INTELIGENTE */}
+                      <div>
+                        <Label style={{ color: rdoIsDark ? "#9ca3af" : "#334155" }}>
+                          Prefixo / Tipo da OS
+                        </Label>
+
+                        {/* SE INTERNO → PREFIXO FIXO */}
+                        {rdoEditOs.tipo === "interno" && (
+                          <Input
+                            readOnly
+                            value="100000"
+                            style={{
+                              marginTop: 6,
+                              background: rdoIsDark ? "#1e293b" : "#e2e8f0",
+                              color: rdoIsDark ? "#e5e7eb" : "#0f172a",
+                              cursor: "not-allowed",
+                            }}
+                          />
+                        )}
+
+                        {/* SE EXTERNO → SELECT (3, 7 ou 100000) */}
+                        {rdoEditOs.tipo === "externo" && (
+                          <>
+                            <select
+                              value={rdoEditOs.prefixo}
+                              onChange={(e) =>
+                                setRdoEditOs((prev) => ({
+                                  ...prev,
+                                  prefixo: e.target.value,
+                                }))
+                              }
+                              style={{
+                                marginTop: 6,
+                                width: "100%",
+                                padding: "10px 12px",
+                                background: rdoIsDark ? "#0f1e2e" : "#f8fafc",
+                                border: rdoIsDark ? "1px solid #1e293b" : "1px solid #cbd5e1",
+                                borderRadius: 8,
+                                color: rdoIsDark ? "#e2e8f0" : "#0f172a",
+                              }}
+                            >
+                              <option value="">Selecione...</option>
+                              <option value="3">3</option>
+                              <option value="7">7</option>
+                              <option value="100000">100000</option>
+                            </select>
+
+                            {/* VALIDAÇÃO VISUAL */}
+                            {rdoEditOs.prefixo === "" && (
+                              <div style={{ color: "#f87171", marginTop: 4 }}>
+                                * Escolha um prefixo
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+
+                      <div>
+                        <Label>Número (6 dígitos)</Label>
+                        <Input
+                          inputMode="numeric"
+                          value={rdoEditOs.numero}
+                          onChange={(e) =>
+                            setRdoEditOs({
+                              ...rdoEditOs,
+                              numero: e.target.value.replace(/\D/g, "").slice(0, 6),
+                            })
+                          }
+                          style={{
+                            marginTop: 6,
+                            background: rdoIsDark ? "#0f1e2e" : "#f8fafc",
+                            color: rdoIsDark ? "#e2e8f0" : "#0f172a",
+
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* BOTÕES */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 10,
+                        marginTop: 10,
+                      }}
+                    >
+                      <BigBtn onClick={() => setRdoEditOs(null)}>Cancelar</BigBtn>
+
+                      <BigBtn
+                        $primary
+                        onClick={() => {
+                          if (!rdoEditOs.prefixo || !/^\d{6}$/.test(rdoEditOs.numero)) {
+                            alert("Informe o prefixo e um número com 6 dígitos.");
+                            return;
+                          }
+
+                          // Atualiza storage
+                          setSavedJourneys((prev) => {
+                            const next = prev.map((j) => {
+                              if (j.id !== rdoEditOs.jornadaId) return j;
+
+                              return {
+                                ...j,
+                                atendimentos: j.atendimentos.map((att) =>
+                                  att.id === rdoEditOs.atendimentoId
+                                    ? {
+                                      ...att,
+                                      ordemTipo: rdoEditOs.prefixo,
+                                      ordemNumero: rdoEditOs.numero,
+                                      notaEnviada: "sim",
+                                    }
+                                    : att
+                                ),
+                              };
+                            });
+
+                            localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+                            return next;
+                          });
+
+                          // Atualiza o modal em memória
+                          setRdoHistoricoView((prev) => ({
+                            ...prev,
+                            atendimentos: prev.atendimentos.map((att) =>
+                              att.id === rdoEditOs.atendimentoId
+                                ? {
+                                  ...att,
+                                  ordemTipo: rdoEditOs.prefixo,
+                                  ordemNumero: rdoEditOs.numero,
+                                  notaEnviada: "sim",
+                                }
+                                : att
+                            ),
+                          }));
+
+                          setRdoEditOs(null);
+                        }}
+                      >
+                        Salvar OS
                       </BigBtn>
                     </div>
-                  )}
-                </>
-              );
-            })()}
-
-          </div>
-        )}
+                  </div>
+                </div>
+              )}
 
 
-        {/* MODAL SUSPENDER ALMOÇO */}
-        {
-          suspenderAlmocoOpen && (
-            <Overlay onClick={(e) => e.target === e.currentTarget && setSuspenderAlmocoOpen(false)}>
+            </Body>
+          </Panel>
+        </Overlay>
+      )}
+
+
+      <Overlay onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+
+        <Panel
+          key={animKey}
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 30, opacity: 0 }}
+          transition={{ duration: 0.22 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Header>
+            <TitleWrap>
+              <Title>Novo Atendimento — Mobile (Híbrido)</Title>
+              <Sub>
+                {tab === 0
+                  ? `Step ${step}/9`
+                  : tab === 1
+                    ? "Timeline"
+                    : tab === 2
+                      ? "Painel"
+                      : "RDO"}
+              </Sub>
+            </TitleWrap>
+
+            {/* <CloseBtn onClick={() => onClose?.()}>
+            <X size={20} />
+          </CloseBtn> */}
+          </Header>
+
+          {tab === 0 && (
+            <Progress>
+              <ProgressFill $pct={pct} />
+            </Progress>
+          )}
+
+          {/* ====== BARRA FIXA DE ALMOÇO ====== */}
+          {step !== 0 && (
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "#0d2234",
+                borderBottom: "1px solid #00396b",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+
+
+              {/* =========== CONTROLES DE ALMOÇO =========== */}
+              {(() => {
+                const ultimo = jornada.almocos[jornada.almocos.length - 1];
+
+                const existeAlmocoValido = jornada.almocos.some(a => {
+                  if (!a.fim) return false;
+                  return duracaoAlmocoMs(a) >= MIN_ALMOCO_MS;
+                });
+
+                const emCurso = ultimo && ultimo.inicio && !ultimo.fim && !ultimo.suspensoEm;
+                const podeIniciarAlmoco = !emCurso && !existeAlmocoValido;
+
+                return (
+                  <>
+                    {podeIniciarAlmoco && (
+                      <BigBtn
+                        $primary
+                        onClick={() => {
+                          if (step === 5 || step === 6 || step === 7 || step === 9 || step === 10) {
+                            // deslocamento ativo ou atendimento ativo
+                            setConfirmPauseForLunchOpen(true);
+                            return;
+                          }
+                          iniciarAlmoco();
+                        }}
+                      >
+                        Iniciar Almoço
+                      </BigBtn>
+                    )}
+
+                    {emCurso && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <BigBtn
+                          style={{ flex: 1, background: "#0ea5e9", borderColor: "#0ea5e9" }}
+                          onClick={async () => {
+                            const ultimo = jornada.almocos[jornada.almocos.length - 1];
+                            if (!ultimo?.inicio) return;
+
+                            const diff = Date.now() - new Date(ultimo.inicio).getTime();
+                            setTempoAlmocoAtual(diff);
+
+                            if (diff < MIN_ALMOCO_MS) {
+                              setConfirmAlmocoEarlyOpen(true); // << ABRE O MODAL
+                            } else {
+                              finalizarAlmoco();
+                            }
+                          }}
+                        >
+                          Finalizar Almoço
+                        </BigBtn>
+
+                        <BigBtn
+                          style={{
+                            flex: 1,
+                            background: "#fbbf24",
+                            borderColor: "#f59e0b",
+                            color: "#082f49",
+                          }}
+                          onClick={() => setSuspenderAlmocoOpen(true)}
+                        >
+                          Suspender Almoço
+                        </BigBtn>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+            </div>
+          )}
+
+
+          {/* MODAL SUSPENDER ALMOÇO */}
+          {
+            suspenderAlmocoOpen && (
+              <Overlay onClick={(e) => e.target === e.currentTarget && setSuspenderAlmocoOpen(false)}>
+                <Panel
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: .22 }}
+                ><Body>
+
+                    <h3 style={{ color: "#f59e0b" }}>Suspender Almoço</h3>
+
+                    <Field>
+                      <Label>Nome do solicitante</Label>
+                      <Input
+                        value={suspenderSolicitante}
+                        onChange={e => setSuspenderSolicitante(e.target.value)}
+                        placeholder="Quem solicitou o atendimento?"
+                      />
+                    </Field>
+
+                    <Field>
+                      <Label>Justificativa</Label>
+                      <textarea
+                        value={suspenderJustificativa}
+                        onChange={e => setSuspenderJustificativa(e.target.value)}
+                        placeholder="Descreva o motivo..."
+                        style={{
+                          width: "100%",
+                          minHeight: 80,
+                          background: "#071827",
+                          color: "#e5f0ff",
+                          border: "1px solid #00396b",
+                          padding: 8,
+                          borderRadius: 8
+                        }}
+                      />
+                    </Field>
+
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <BigBtn onClick={() => setSuspenderAlmocoOpen(false)}>Cancelar</BigBtn>
+                      <BigBtn $primary onClick={confirmarSuspensaoAlmoco}>Confirmar</BigBtn>
+                    </div>
+
+                  </Body>
+                </Panel>
+              </Overlay>
+            )
+          }
+
+
+          {confirmAlmocoEarlyOpen && (
+            <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmAlmocoEarlyOpen(false)}>
               <Panel
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -4371,205 +5270,167 @@ const calcularJornadaTotalDe = (jor) =>
               >
                 <Body>
 
-                  <h3 style={{ color: "#f59e0b" }}>Suspender Almoço</h3>
+                  <h3 style={{ color: "#f59e0b", marginBottom: 10 }}>
+                    Finalizar almoço antes dos 50 minutos?
+                  </h3>
 
-                  <Field>
-                    <Label>Nome do solicitante</Label>
-                    <Input
-                      value={suspenderSolicitante}
-                      onChange={e => setSuspenderSolicitante(e.target.value)}
-                      placeholder="Quem solicitou o atendimento?"
-                    />
-                  </Field>
-
-                  <Field>
-                    <Label>Justificativa</Label>
-                    <textarea
-                      value={suspenderJustificativa}
-                      onChange={e => setSuspenderJustificativa(e.target.value)}
-                      placeholder="Descreva o motivo..."
-                      style={{
-                        width: "100%",
-                        minHeight: 80,
-                        background: "#071827",
-                        color: "#e5f0ff",
-                        border: "1px solid #00396b",
-                        padding: 8,
-                        borderRadius: 8
-                      }}
-                    />
-                  </Field>
+                  <div style={{ color: "#cbd5e1", marginBottom: 12 }}>
+                    O tempo mínimo recomendado é <strong>50 minutos</strong>.<br />
+                    Você registrou apenas{" "}
+                    <strong>{Math.round(tempoAlmocoAtual / 60000)} min</strong>.
+                  </div>
 
                   <div style={{ display: "flex", gap: 10 }}>
-                    <BigBtn onClick={() => setSuspenderAlmocoOpen(false)}>Cancelar</BigBtn>
-                    <BigBtn $primary onClick={confirmarSuspensaoAlmoco}>Confirmar</BigBtn>
+                    <BigBtn onClick={() => setConfirmAlmocoEarlyOpen(false)}>
+                      Cancelar
+                    </BigBtn>
+
+                    <BigBtn
+                      $primary
+                      onClick={() => {
+                        // fecha modal antes de tudo
+                        setConfirmAlmocoEarlyOpen(false);
+
+                        // usa callback da atualização de estado para garantir render correto
+                        setJornada(j => {
+                          const almocos = [...j.almocos];
+                          const ultimo = almocos[almocos.length - 1];
+                          if (ultimo) {
+                            ultimo.almoçoInvalido = true;
+                            ultimo.fim = nowISO(); // <- garantir que o fim seja registrado aqui
+                          }
+                          return { ...j, almocos };
+                        });
+
+                        // garante que o fluxo do almoço encerra normalmente
+                        finalizarAlmoco();
+                      }}
+                    >
+                      Finalizar mesmo assim
+                    </BigBtn>
                   </div>
 
                 </Body>
               </Panel>
             </Overlay>
-          )
-        }
+          )}
 
+          {/* MODAL Pausa ALMOÇO */}
 
-        {confirmAlmocoEarlyOpen && (
-          <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmAlmocoEarlyOpen(false)}>
-            <Panel
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: .22 }}
-            >
-              <Body>
+          {confirmPauseForLunchOpen && (
+            <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmPauseForLunchOpen(false)}>
+              <Panel initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+                <Body>
+                  <h3 style={{ color: "#f59e0b" }}>Pausar atendimento para almoço?</h3>
 
-                <h3 style={{ color: "#f59e0b", marginBottom: 10 }}>
-                  Finalizar almoço antes dos 50 minutos?
-                </h3>
+                  <div style={{ color: "#cbd5e1", marginTop: 8, marginBottom: 16 }}>
+                    O atendimento atual será pausado e será iniciado um registro de almoço.
+                    Você só poderá continuar o atendimento quando finalizar o almoço.
+                  </div>
 
-                <div style={{ color: "#cbd5e1", marginBottom: 12 }}>
-                  O tempo mínimo recomendado é <strong>50 minutos</strong>.<br />
-                  Você registrou apenas{" "}
-                  <strong>{Math.round(tempoAlmocoAtual / 60000)} min</strong>.
-                </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <BigBtn onClick={() => setConfirmPauseForLunchOpen(false)}>
+                      Cancelar
+                    </BigBtn>
 
-                <div style={{ display: "flex", gap: 10 }}>
-                  <BigBtn onClick={() => setConfirmAlmocoEarlyOpen(false)}>
-                    Cancelar
-                  </BigBtn>
+                    <BigBtn
+                      $primary
+                      onClick={() => {
+                        setConfirmPauseForLunchOpen(false);
 
-                  <BigBtn
-                    $primary
-                    onClick={() => {
-                      // fecha modal antes de tudo
-                      setConfirmAlmocoEarlyOpen(false);
+                        // marca pausa
+                        setCurrent(c => ({
+                          ...c,
+                          pausadoParaAlmoco: true,
+                          stepAntesAlmoco: step
+                        }));
 
-                      // usa callback da atualização de estado para garantir render correto
-                      setJornada(j => {
-                        const almocos = [...j.almocos];
-                        const ultimo = almocos[almocos.length - 1];
-                        if (ultimo) {
-                          ultimo.almoçoInvalido = true;
-                          ultimo.fim = nowISO(); // <- garantir que o fim seja registrado aqui
-                        }
-                        return { ...j, almocos };
-                      });
+                        iniciarAlmoco(); // usa seu método atual
 
-                      // garante que o fluxo do almoço encerra normalmente
-                      finalizarAlmoco();
-                    }}
-                  >
-                    Finalizar mesmo assim
-                  </BigBtn>
-                </div>
-
-              </Body>
-            </Panel>
-          </Overlay>
-        )}
-
-        {/* MODAL Pausa ALMOÇO */}
-
-        {confirmPauseForLunchOpen && (
-          <Overlay onClick={(e) => e.target === e.currentTarget && setConfirmPauseForLunchOpen(false)}>
-            <Panel initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
-              <Body>
-                <h3 style={{ color: "#f59e0b" }}>Pausar atendimento para almoço?</h3>
-
-                <div style={{ color: "#cbd5e1", marginTop: 8, marginBottom: 16 }}>
-                  O atendimento atual será pausado e será iniciado um registro de almoço.
-                  Você só poderá continuar o atendimento quando finalizar o almoço.
-                </div>
-
-                <div style={{ display: "flex", gap: 10 }}>
-                  <BigBtn onClick={() => setConfirmPauseForLunchOpen(false)}>
-                    Cancelar
-                  </BigBtn>
-
-                  <BigBtn
-                    $primary
-                    onClick={() => {
-                      setConfirmPauseForLunchOpen(false);
-
-                      // marca pausa
-                      setCurrent(c => ({
-                        ...c,
-                        pausadoParaAlmoco: true,
-                        stepAntesAlmoco: step
-                      }));
-
-                      iniciarAlmoco(); // usa seu método atual
-
-                      // força para a área do almoço
-                      setStep(step); // mantém step igual até o fim do almoço
-                    }}
-                  >
-                    Pausar e iniciar almoço
-                  </BigBtn>
-                </div>
-              </Body>
-            </Panel>
-          </Overlay>
-        )}
-
-
-        <Body>
-
-          {tab === 0 && (
-            <AnimatePresence mode="wait">
-              {step === 0 && Step0_IniciarJornada}
-              {step === 1 && Step1_Tipo}
-              {step === 2 && Step2_OS}
-              {step === 3 && Step3_Endereco}
-              {step === 4 && Step4_DeslocamentoPrep}
-              {step === 5 && Step5_DeslocamentoAtivo}
-              {step === 6 && Step6_AtendimentoAtivo}
-              {step === 7 && Step7_AtendimentoConcluido}
-              {step === 8 && Step8_AposAtendimento}
-              {step === 9 && Step9_RetornoBase}
-              {step === 10 && Step10_Interromper}
-            </AnimatePresence>
+                        // força para a área do almoço
+                        setStep(step); // mantém step igual até o fim do almoço
+                      }}
+                    >
+                      Pausar e iniciar almoço
+                    </BigBtn>
+                  </div>
+                </Body>
+              </Panel>
+            </Overlay>
           )}
 
 
-          {tab === 1 && TimelineView}
-          {tab === 2 && PainelView}
-          {tab === 3 && RDOView}
-        </Body>
+          <Body>
 
-        <TabBar>
-          <TabBtn
-            onClick={() => setTab(0)}
-            style={{ color: tab === 0 ? "#e6f7ff" : undefined }}
-          >
-            <List size={18} />
-            Atend.
-          </TabBtn>
+            {tab === 0 && (
+              <AnimatePresence mode="wait">
+                {step === 0 && Step0_IniciarJornada}
+                {step === 1 && Step1_Tipo}
+                {step === 2 && Step2_OS}
+                {step === 3 && Step3_Endereco}
+                {step === 4 && Step4_DeslocamentoPrep}
+                {step === 5 && Step5_DeslocamentoAtivo}
+                {step === 6 && Step6_AtendimentoAtivo}
+                {step === 7 && Step7_AtendimentoConcluido}
+                {step === 8 && Step8_AposAtendimento}
+                {step === 9 && Step9_RetornoBase}
+                {step === 10 && Step10_Interromper}
+              </AnimatePresence>
+            )}
 
-          <TabBtn
-            onClick={() => setTab(1)}
-            style={{ color: tab === 1 ? "#e6f7ff" : undefined }}
-          >
-            <Clock size={18} />
-            Timeline
-          </TabBtn>
 
-          <TabBtn
-            onClick={() => setTab(2)}
-            style={{ color: tab === 2 ? "#e6f7ff" : undefined }}
-          >
-            <BarChart2 size={18} />
-            Painel
-          </TabBtn>
+            {tab === 1 && TimelineView}
+            {tab === 2 && PainelView}
+            {tab === 3 && RDOView}
+            {tab === 4 && MeusAtendimentosView}
 
-          <TabBtn
-            onClick={() => setTab(3)}
-            style={{ color: tab === 3 ? "#e6f7ff" : undefined }}
-          >
-            <FileText size={18} />
-            RDO
-          </TabBtn>
-        </TabBar>
-      </Panel>
-    </Overlay>
+          </Body>
+
+          <TabBar>
+            <TabBtn
+              onClick={() => setTab(0)}
+              style={{ color: tab === 0 ? "#e6f7ff" : undefined }}
+            >
+              <List size={18} />
+              Atend.
+            </TabBtn>
+
+            <TabBtn
+              onClick={() => setTab(1)}
+              style={{ color: tab === 1 ? "#e6f7ff" : undefined }}
+            >
+              <Clock size={18} />
+              Timeline
+            </TabBtn>
+
+            <TabBtn
+              onClick={() => setTab(2)}
+              style={{ color: tab === 2 ? "#e6f7ff" : undefined }}
+            >
+              <BarChart2 size={18} />
+              Painel
+            </TabBtn>
+
+            <TabBtn
+              onClick={() => setTab(3)}
+              style={{ color: tab === 3 ? "#e6f7ff" : undefined }}
+            >
+              <FileText size={18} />
+              RDO
+            </TabBtn>
+
+            {/* <TabBtn
+              onClick={() => setTab(4)}
+              style={{ color: tab === 4 ? "#e6f7ff" : undefined }}
+            >
+              <History size={18} />
+              Histórico
+            </TabBtn> */}
+
+          </TabBar>
+        </Panel>
+      </Overlay>
+    </>
   );
 }
 
