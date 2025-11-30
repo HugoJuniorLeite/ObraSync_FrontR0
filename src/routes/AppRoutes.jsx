@@ -38,9 +38,10 @@ import PrincipalPreVgb from "../components/RdoForms/Croqui/PrincipalPreVgb";
 import UnderConstruction from "../pages/UnderConstruction";
 import EmployeeList from "../components/EmployeeList";
 import OccupationList from "../components/OccupationList";
+import GasistaPage from "../pages/RDO/GasistaPage";
 import AttendanceWizardModal from "../components/RdoForms/AttendanceWizardModal";
-import RdoMain from "../components/RDO/GasitaOperacoes/RdoMain";
-
+// import RdoMain from "../components/RDO/GasitaOperacoes/RdoMain";
+// import GasistaPage from "../pages/Rdo/GasistaPage";
 
 // Estilo principal
 const Main = styled.main`
@@ -87,9 +88,9 @@ const roleRoutes = [
       { path: "/requisicoes/epi", element: <UnderConstruction featureName="Requisitar EPI" /> },
       { path: "/checklist/arl", element: <UnderConstruction featureName="ARL" /> },
       { path: "/checklist/frota", element: <UnderConstruction featureName="Check-list Frota" /> },
-          { path: "/rdo/gasista", element: <AttendanceWizardModal featureName="Gasista" /> },
+          // { path: "/rdo/gasista", element: <AttendanceWizardModal featureName="Gasista" /> },
           // { path: "/rdo/gasista", element: <RdoMain featureName="Gasista" /> },
-
+{ path: "/rdo/gasista", element: <GasistaPage /> },
 
     ],
   },
