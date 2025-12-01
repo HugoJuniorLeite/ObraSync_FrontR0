@@ -857,15 +857,60 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   };
 
   // Encerrar expediente
+  // const encerrarExpediente = async () => {
+  //   const gps = await getLocation();
+  //   setJornada((p) => ({
+  //     ...p,
+  //     fimExpediente: nowISO(),
+  //     gpsFimExpediente: gps,
+  //   }));
+  //   setSignatureEnabled(true);
+  // };
+
   const encerrarExpediente = async () => {
-    const gps = await getLocation();
-    setJornada((p) => ({
-      ...p,
-      fimExpediente: nowISO(),
-      gpsFimExpediente: gps,
-    }));
-    setSignatureEnabled(true);
+  const gps = await getLocation();
+
+  // 1 — finaliza jornada
+  const jornadaFinal = {
+    ...jornada,
+    fimExpediente: nowISO(),
+    gpsFimExpediente: gps,
   };
+
+  // (futuro) — aqui você enviaria jornadaFinal para o backend
+
+  // 2 — salva fim da jornada (opcional)
+  setJornada(jornadaFinal);
+
+  // 3 — limpar TUDO do localStorage
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem("wizard_step");
+  localStorage.removeItem("wizard_state");
+
+  // 4 — resetar estados da aplicação
+  setSignatureEnabled(false);
+  setWizardStep(0);
+  setTab(0);
+
+  // 5 — limpar a jornada atual na memória
+  setJornada({
+    id: uuid(),
+    date: new Date().toLocaleDateString("pt-BR"),
+    inicioExpediente: null,
+    fimExpediente: null,
+    atendimentos: [],
+    almocos: [],
+    atividadeAtual: "livre",
+    atividadeAnterior: null,
+    baseLogs: [],
+  });
+
+  // 6 — limpar assinatura
+  sigRef.current?.clear();
+
+  alert("Jornada encerrada com sucesso!");
+};
+
 
   const ultimoAlmoco =
   jornada.almocos?.[jornada.almocos.length - 1] || {
@@ -939,14 +984,28 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
           )}
         </Body>
 
-        <TabBar>
-          {tabs.map((t) => (
-            <TabBtn key={t.id} $active={t.id === tab} onClick={() => setTab(t.id)}>
-              <t.icon size={18} />
-              {t.label}
-            </TabBtn>
-          ))}
-        </TabBar>
+    <TabBar>
+  {tabs.map((t) => (
+    <TabBtn
+      key={t.id}
+      $active={t.id === tab}
+      onClick={() => {
+        setTab(t.id);
+
+        // 👉 Quando abrir o RDO, habilita assinatura
+        if (t.id === 3) {
+          if (jornada.inicioExpediente && !jornada.fimExpediente) {
+            setSignatureEnabled(true);
+          }
+        }
+      }}
+    >
+      <t.icon size={18} />
+      {t.label}
+    </TabBtn>
+  ))}
+</TabBar>
+
 
         {/* MODAIS */}
         {showSuspenderModal && (
