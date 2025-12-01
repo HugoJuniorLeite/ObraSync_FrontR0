@@ -9,7 +9,7 @@ export default function Step7_AtendimentoConcluido({
   BigBtn,
   current,
   fmt,
-  iniciarDeslocamentoParaBase,
+  onIniciarRetornoBase,
   startNewAtendimento,
   next,
   prev,
@@ -49,7 +49,7 @@ export default function Step7_AtendimentoConcluido({
           <BigBtn
             $primary
             onClick={() => {
-              iniciarDeslocamentoParaBase();
+              onIniciarRetornoBase();
               next(); // vai para o Step 8
             }}
           >
@@ -59,8 +59,7 @@ export default function Step7_AtendimentoConcluido({
           {/* BOTÃO NOVO ATENDIMENTO */}
           <BigBtn
             onClick={() => {
-              startNewAtendimento();
-              next(); // volta para etapa inicial (ou Step 1)
+              startNewAtendimento(2);
             }}
           >
             <Plus size={16} /> Novo atendimento
@@ -70,64 +69,3 @@ export default function Step7_AtendimentoConcluido({
     </motion.div>
   );
 }
-
-// import React from "react";
-// import { motion } from "framer-motion";
-// import { Plus } from "lucide-react";
-
-// export default function Step7_AtendimentoConcluido({
-//   Field,
-//   Label,
-//   Card,
-//   BigBtn,
-//   current,
-//   fmt,
-//   iniciarDeslocamentoParaBase, // callback vindo do WizardController
-//   startNewAtendimento,
-//   next,
-// }) {
-//   return (
-//     <motion.div
-//       key="s7"
-//       initial={{ x: 20, opacity: 0 }}
-//       animate={{ x: 0, opacity: 1 }}
-//       exit={{ x: -20, opacity: 0 }}
-//       transition={{ duration: 0.24 }}
-//     >
-//       <Field>
-//         <Label>Atendimento concluído</Label>
-
-//         <Card>
-//           <div style={{ color: "#9fb4c9" }}>
-//             Início: {fmt(current.atendimentoInicio)} <br />
-//             Fim: {fmt(current.finalizadoEm)} <br />
-//             GPS Início: {current.gpsInicio?.lat || "—"},
-//             {current.gpsInicio?.lng || "—"} <br />
-//             GPS Chegada: {current.gpsChegada?.lat || "—"},
-//             {current.gpsChegada?.lng || "—"}
-//           </div>
-//         </Card>
-
-//         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-//           <BigBtn
-//             $primary
-//             onClick={() => {
-//               iniciarDeslocamentoParaBase(); // apenas chama callback
-//               next(); // vai para Step 8
-//             }}
-//           >
-//             Retornar à base
-//           </BigBtn>
-
-//           <BigBtn
-//             onClick={() => {
-//               startNewAtendimento();
-//             }}
-//           >
-//             <Plus size={16} /> Novo atendimento
-//           </BigBtn>
-//         </div>
-//       </Field>
-//     </motion.div>
-//   );
-// }

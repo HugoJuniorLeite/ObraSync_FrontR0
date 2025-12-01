@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 
-export default function Step10_Interromper({
+export default function Step9_Interromper({
   Field,
   Label,
   Card,
