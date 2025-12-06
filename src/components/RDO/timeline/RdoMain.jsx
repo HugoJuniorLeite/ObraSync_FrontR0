@@ -43,7 +43,7 @@ const RdoMain = ({ jornada }) => {
         <InfoLine label="Tempo de atendimento" value={msToHuman(atendimentoMs)} />
         <InfoLine label="Tempo em deslocamento" value={msToHuman(deslocamentoMs)} />
         <InfoLine label="Almoço" value={msToHuman(almocoMs)} />
-        <InfoLine label="Ociosidade" value={msToHuman(ociosidadeMs)} />
+        <InfoLine label="Tempo aguardando chamado" value={msToHuman(ociosidadeMs)} />
 
         <div style={{ height: 1, background: "#00396b", margin: "12px 0" }} />
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 
 export default function Step6_AtendimentoAtivo({
@@ -11,15 +11,13 @@ export default function Step6_AtendimentoAtivo({
   concluirAtendimento,
   next,
   prev,
+  addFotos, // ← função passada pelo WizardController
 }) {
-  const [querComentario, setQuerComentario] = useState(null);
-  const [querFotos, setQuerFotos] = useState(null);
-  const [fotosPreview, setFotosPreview] = useState([]);
 
   // Mensagens de erro
-  const [erroComentario, setErroComentario] = useState("");
-  const [erroFotos, setErroFotos] = useState("");
-  const [erroSelecao, setErroSelecao] = useState("");
+  const [erroComentario, setErroComentario] = React.useState("");
+  const [erroFotos, setErroFotos] = React.useState("");
+  const [erroSelecao, setErroSelecao] = React.useState("");
 
   // ============================
   // VALIDAR ANTES DE FINALIZAR
@@ -31,20 +29,20 @@ export default function Step6_AtendimentoAtivo({
     setErroFotos("");
     setErroSelecao("");
 
-    // OBRIGA responder SIM ou NÃO nas duas perguntas
-    if (querComentario === null || querFotos === null) {
+    const querComentario = current.querComentario;
+    const querFotos = current.querFotos;
+
+    if (querComentario == null || querFotos == null) {
       setErroSelecao("Responda todas as perguntas antes de finalizar.");
       valido = false;
     }
 
-    // Se SIM no comentário → obrigatório preencher texto
     if (querComentario === "sim" && (!current.comentario || current.comentario.trim() === "")) {
       setErroComentario("Por favor, preencha o comentário.");
       valido = false;
     }
 
-    // Se SIM nas fotos → obrigatório ter ao menos 1 foto
-    if (querFotos === "sim" && fotosPreview.length === 0) {
+    if (querFotos === "sim" && (!current.fotos || current.fotos.length === 0)) {
       setErroFotos("Envie pelo menos uma foto.");
       valido = false;
     }
@@ -89,7 +87,7 @@ export default function Step6_AtendimentoAtivo({
           )}
 
           {/* =============================
-                PERGUNTA 1 — COMENTÁRIO
+            PERGUNTA 1 — COMENTÁRIO
           ============================== */}
           <Card style={{ marginTop: 10, padding: 12 }}>
             <strong style={{ color: "#dbeafe" }}>Deseja inserir um comentário?</strong>
@@ -98,12 +96,12 @@ export default function Step6_AtendimentoAtivo({
               <BigBtn
                 style={{
                   flex: 1,
-                  background: querComentario === "sim" ? "#38bdf8" : "transparent",
-                  borderColor: querComentario === "sim" ? "#38bdf8" : "#1e3a8a",
-                  color: querComentario === "sim" ? "#082f49" : "#dbeafe",
+                  background: current.querComentario === "sim" ? "#38bdf8" : "transparent",
+                  borderColor: current.querComentario === "sim" ? "#38bdf8" : "#1e3a8a",
+                  color: current.querComentario === "sim" ? "#082f49" : "#dbeafe",
                 }}
                 onClick={() => {
-                  setQuerComentario("sim");
+                  updateCurrentField("querComentario", "sim");
                 }}
               >
                 Sim
@@ -112,12 +110,12 @@ export default function Step6_AtendimentoAtivo({
               <BigBtn
                 style={{
                   flex: 1,
-                  background: querComentario === "nao" ? "#38bdf8" : "transparent",
-                  borderColor: querComentario === "nao" ? "#38bdf8" : "#1e3a8a",
-                  color: querComentario === "nao" ? "#082f49" : "#dbeafe",
+                  background: current.querComentario === "nao" ? "#38bdf8" : "transparent",
+                  borderColor: current.querComentario === "nao" ? "#38bdf8" : "#1e3a8a",
+                  color: current.querComentario === "nao" ? "#082f49" : "#dbeafe",
                 }}
                 onClick={() => {
-                  setQuerComentario("nao");
+                  updateCurrentField("querComentario", "nao");
                   updateCurrentField("comentario", "");
                 }}
               >
@@ -125,7 +123,7 @@ export default function Step6_AtendimentoAtivo({
               </BigBtn>
             </div>
 
-            {querComentario === "sim" && (
+            {current.querComentario === "sim" && (
               <>
                 <textarea
                   value={current.comentario || ""}
@@ -152,7 +150,7 @@ export default function Step6_AtendimentoAtivo({
           </Card>
 
           {/* =============================
-                PERGUNTA 2 — FOTOS
+            PERGUNTA 2 — FOTOS
           ============================== */}
           <Card style={{ marginTop: 14, padding: 12 }}>
             <strong style={{ color: "#dbeafe" }}>Deseja incluir fotos?</strong>
@@ -161,11 +159,11 @@ export default function Step6_AtendimentoAtivo({
               <BigBtn
                 style={{
                   flex: 1,
-                  background: querFotos === "sim" ? "#38bdf8" : "transparent",
-                  borderColor: querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
-                  color: querFotos === "sim" ? "#082f49" : "#dbeafe",
+                  background: current.querFotos === "sim" ? "#38bdf8" : "transparent",
+                  borderColor: current.querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
+                  color: current.querFotos === "sim" ? "#082f49" : "#dbeafe",
                 }}
-                onClick={() => setQuerFotos("sim")}
+                onClick={() => updateCurrentField("querFotos", "sim")}
               >
                 Sim
               </BigBtn>
@@ -173,21 +171,21 @@ export default function Step6_AtendimentoAtivo({
               <BigBtn
                 style={{
                   flex: 1,
-                  background: querFotos === "nao" ? "#38bdf8" : "transparent",
-                  borderColor: querFotos === "nao" ? "#38bdf8" : "#1e3a8a",
-                  color: querFotos === "nao" ? "#082f49" : "#dbeafe",
+                  background: current.querFotos === "nao" ? "#38bdf8" : "transparent",
+                  borderColor: current.querFotos === "nao" ? "#38bdf8" : "#1e3a8a",
+                  color: current.querFotos === "nao" ? "#082f49" : "#dbeafe",
                 }}
                 onClick={() => {
-                  setQuerFotos("nao");
+                  updateCurrentField("querFotos", "nao");
                   updateCurrentField("fotos", []);
-                  setFotosPreview([]);
                 }}
               >
                 Não
               </BigBtn>
             </div>
 
-            {querFotos === "sim" && (
+            {/* INPUT DE FOTOS */}
+            {current.querFotos === "sim" && (
               <>
                 <div style={{ marginTop: 16 }}>
                   <label
@@ -202,21 +200,15 @@ export default function Step6_AtendimentoAtivo({
                     }}
                   >
                     Tirar / Selecionar fotos
+
                     <input
                       type="file"
                       accept="image/*"
                       capture="environment"
                       multiple
                       style={{ display: "none" }}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files);
-                        const arr = files.map((f) => ({
-                          file: f,
-                          url: URL.createObjectURL(f),
-                        }));
-
-                        updateCurrentField("fotos", arr);
-                        setFotosPreview(arr);
+                      onChange={async (e) => {
+                        await addFotos(Array.from(e.target.files));
                       }}
                     />
                   </label>
@@ -226,7 +218,8 @@ export default function Step6_AtendimentoAtivo({
                   <div style={{ color: "#f87171", marginTop: 6 }}>{erroFotos}</div>
                 )}
 
-                {fotosPreview.length > 0 && (
+                {/* PREVIEW PERSISTENTE */}
+                {current.fotos?.length > 0 && (
                   <div
                     style={{
                       marginTop: 14,
@@ -235,7 +228,7 @@ export default function Step6_AtendimentoAtivo({
                       gap: 10,
                     }}
                   >
-                    {fotosPreview.map((f, idx) => (
+                    {current.fotos.map((base64, idx) => (
                       <div
                         key={idx}
                         style={{
@@ -247,7 +240,7 @@ export default function Step6_AtendimentoAtivo({
                         }}
                       >
                         <img
-                          src={f.url}
+                          src={base64}
                           alt=""
                           style={{
                             width: "100%",
@@ -263,9 +256,7 @@ export default function Step6_AtendimentoAtivo({
             )}
           </Card>
 
-          {/* =============================
-              BOTÃO FINALIZAR
-          ============================== */}
+          {/* BOTÃO FINALIZAR */}
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <BigBtn $primary style={{ width: "100%" }} onClick={handleFinalizar}>
               Finalizar atendimento

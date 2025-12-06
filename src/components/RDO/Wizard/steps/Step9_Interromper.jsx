@@ -71,7 +71,8 @@ export default function Step9_Interromper({
             {/* CANCELAR */}
             <BigBtn
               onClick={() => {
-                setStep(9); // volta sem limpar o texto
+                    setInterromperReasonText(""); // limpa o texto
+                setStep(8); // volta para step anterior
               }}
               style={{ width: "100%" }}
             >

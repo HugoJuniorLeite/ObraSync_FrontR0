@@ -1,7 +1,5 @@
-export const nowISO = () => new Date().toISOString();
-
-export const fmt = (d) =>
-  d ? new Date(d).toLocaleString("pt-BR") : "—";
+// src/components/RDO/helpers/time.js
+// Funções genéricas de data e tempo.
 
 export const calcDurationMs = (start, end) => {
   if (!start || !end) return 0;
@@ -12,12 +10,15 @@ export const calcDurationMs = (start, end) => {
   }
 };
 
+export const fmt = (d) =>
+  d ? new Date(d).toLocaleString("pt-BR") : "—";
+
 export const msToHuman = (ms) => {
-  if (ms <= 0) return "0 min";
-  const min = Math.floor(ms / 60000);
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h > 0) return `${h}h ${m}min`;
-  return `${m}min`;
+  if (!ms || ms <= 0) return "0 min";
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours > 0 ? `${hours}h ${rest}min` : `${rest}min`;
 };
 
+export const nowISO = () => new Date().toISOString();
