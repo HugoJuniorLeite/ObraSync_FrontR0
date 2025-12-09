@@ -124,11 +124,8 @@ export default function  Step8_AposAtendimento({
               <br />
 
               Distância estimada até a base:{" "}
-              {distanciaAteBase
-                ? distanciaAteBase()
-                  ? (distanciaAteBase() / 1000).toFixed(2) + " km"
-                  : "—"
-                : "—"}
+             {distanciaAteBase ? distanciaAteBase() : "—"}
+
             </div>
           </Card>
 

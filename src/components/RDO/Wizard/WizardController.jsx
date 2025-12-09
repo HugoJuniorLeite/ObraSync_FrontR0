@@ -1,7 +1,13 @@
+import { useContext } from "react";
+import { AuthContext } from "../../../contexts/AuthContext"; 
 // WizardController.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { nowISO } from "../helpers/time";
 import { getLocation } from "../helpers/location";
+
+
+import mobileJourneyApi from "../../../services/mobileJourneyApi";
+import { saveCurrentJourneyId } from "../../../utils/journeyStore";
 
 import {
   Field,
@@ -23,64 +29,102 @@ import Step5_DeslocamentoAtivo from "./steps/Step5_DeslocamentoAtivo";
 import Step6_AtendimentoAtivo from "./steps/Step6_AtendimentoAtivo";
 import Step7_AtendimentoConcluido from "./steps/Step7_AtendimentoConcluido";
 import Step8_AposAtendimento from "./steps/Step8_AposAtendimento";
-// import Step9_RetornoBase from "./steps/Step9_RetornoBase";
-// import Step10_Interromper from "./steps/Step9_Interromper";
 import Step9_Interromper from "./steps/Step9_Interromper";
+
+const STORAGE_CURRENT = "wizard_current";
+
+// 🔹 Estrutura padrão do current centralizada
+const createEmptyCurrent = () => ({
+  tipo: "",
+  ordemTipo: "",
+  ordemNumero: "",
+  notaEnviada: null,
+  comentario: "",
+  fotos: [],
+  deslocamentoInicio: null,
+  gpsInicio: null,
+  atendimentoInicio: null,
+  finalizadoEm: null,
+  gpsChegada: null,
+  
+  pausadoParaAlmoco: false,
+  stepAntesAlmoco: null,
+  
+  endereco: {
+    cep: "",
+    rua: "",
+    numero: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    lat: null,
+    lng: null,
+  },
+});
+
+
+// 🔹 Carrega do localStorage mesclando com default (sem fotos)
+const loadCurrent = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_CURRENT);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const base = createEmptyCurrent();
+      return {
+        ...base,
+        ...parsed,
+        endereco: {
+          ...base.endereco,
+          ...(parsed.endereco || {}),
+        },
+        // fotos não são persistidas no localStorage para evitar peso
+        fotos: [],
+      };
+    }
+  } catch {
+    // ignora erro e volta default
+  }
+  return createEmptyCurrent();
+};
 
 export default function WizardController({
   jornada,
   setJornada,
   step,
-  setStep
+  setStep,
 }) {
-  const STORAGE_CURRENT = "wizard_current";
+  const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
+  const [current, setCurrent] = useState(() => loadCurrent());
+  const [interromperReasonText, setInterromperReasonText] = useState("");
+  
+  // 🔹 Debounce para salvar no localStorage (sem fotos)
+  const saveTimeoutRef = useRef(null);
 
-const loadCurrent = () => {
-  try {
-    const saved = localStorage.getItem(STORAGE_CURRENT);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-     return {
-    tipo: "",
-    ordemTipo: "",
-    ordemNumero: "",
-    notaEnviada: null,
-    comentario: "",
-    fotos: [],
-    deslocamentoInicio: null,
-    gpsInicio: null,
-    atendimentoInicio: null,
-    finalizadoEm: null,
-    gpsChegada: null,
+  useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
 
-    pausadoParaAlmoco: false,
-    stepAntesAlmoco: null,
+    saveTimeoutRef.current = setTimeout(() => {
+      const { fotos, ...rest } = current;
+      try {
+        localStorage.setItem(STORAGE_CURRENT, JSON.stringify(rest));
+      } catch (e) {
+        console.warn("Erro ao salvar wizard_current:", e);
+      }
+    }, 300); // 0.3s
 
-    endereco: {
-      cep: "",
-      rua: "",
-      numero: "",
-      bairro: "",
-      cidade: "",
-      estado: "",
-      lat: null,
-      lng: null,
-       },
-      };
-};
-
-const [current, setCurrent] = useState(() => loadCurrent());
-const [interromperReasonText, setInterromperReasonText] = useState("");
-
-useEffect(() => {
-  localStorage.setItem(STORAGE_CURRENT, JSON.stringify(current));
-}, [current]);
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [current]);
 
   // -------------------------
   // EVENTOS DE ALMOÇO
   // -------------------------
   useEffect(() => {
-
     const pauseForLunch = (e) => {
       const { stepBefore } = e.detail || {};
 
@@ -108,93 +152,167 @@ useEffect(() => {
       }
     };
 
-    // const startNewAtendimentoEvt = () => {
-    //   startNewAtendimento();
-    // };
-
     const startNewAtendimentoEvt = (e) => {
       const { step } = e.detail || {};
       startNewAtendimento(step ?? 1);
     };
-
 
     window.addEventListener("pause-for-lunch", pauseForLunch);
     window.addEventListener("lunch-finished", lunchFinished);
     window.addEventListener("goto-step", gotoStep);
     window.addEventListener("start-new-atendimento", startNewAtendimentoEvt);
 
-    // window.dispatchEvent(new CustomEvent("start-new-atendimento", {
-    //   detail: { step: 2 }
-      
-    // }));
-
-    // window.addEventListener("start-new-atendimento", startNewAtendimentoEvt);
-
     return () => {
       window.removeEventListener("pause-for-lunch", pauseForLunch);
       window.removeEventListener("lunch-finished", lunchFinished);
       window.removeEventListener("goto-step", gotoStep);
-      window.removeEventListener("start-new-atendimento", startNewAtendimentoEvt);
+      window.removeEventListener(
+        "start-new-atendimento",
+        startNewAtendimentoEvt
+      );
     };
   }, [step, setStep]);
 
   const next = () => setStep(step + 1);
   const prev = () => setStep(step - 1);
 
+  // 🔹 Atualização imutável sem structuredClone
   const updateCurrentField = (path, value) => {
+    const keys = path.split(".");
     setCurrent((prev) => {
-      const copy = structuredClone(prev);
-      const keys = path.split(".");
-      let ref = copy;
+      const newCurrent = { ...prev };
+      let ref = newCurrent;
+
       for (let i = 0; i < keys.length - 1; i++) {
-        if (!ref[keys[i]]) ref[keys[i]] = {};
-        ref = ref[keys[i]];
+        const k = keys[i];
+        ref[k] = { ...(ref[k] || {}) };
+        ref = ref[k];
       }
+
       ref[keys[keys.length - 1]] = value;
-      return copy;
+      return newCurrent;
     });
   };
 
   // -------------------------
-  // AÇÕES JORNADA
+  // AÇÕES JORNADA (GPS em background)
   // -------------------------
+  // const iniciarJornada = () => {
+  //   // 1) Atualiza estado e step imediatamente
+  //   setJornada((p) => ({
+  //     ...p,
+  //     inicioExpediente: nowISO(),
+  //   }));
+  //   next();
+
+  //   // 2) GPS em segundo plano
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setJornada((p) => ({
+  //       ...p,
+  //       gpsInicioExpediente: gps,
+  //     }));
+  //   });
+  // };
+
+
   const iniciarJornada = async () => {
+  try {
+    const inicio = nowISO();
+    const hoje = inicio.split("T")[0]; // YYYY-MM-DD
+
+    // 1️⃣ GPS imediato (caso disponível)
     const gps = await getLocation();
+
+    // 2️⃣ Identificar o técnico logado
+    // ⚠️ Ajuste essa linha conforme sua auth real!
+    // const employeeId =
+    //   jornada.employee_id ||
+    //   jornada.employeeId ||
+    //   JSON.parse(localStorage.getItem("user"))?.id || 
+    //   1; // fallback provisório
+const employeeId = user?.id;
+
+if (!employeeId) {
+  alert("Erro: usuário não identificado.");
+  return;
+}
+
+
+
+    // 3️⃣ Chamar backend para criar a jornada
+    const created = await mobileJourneyApi.startJourney({
+      employeeId,
+      date: hoje,
+      inicioExpediente: inicio,
+      gpsInicio: gps ?? null,
+    });
+
+    // 4️⃣ Guardar ID da jornada atual
+    saveCurrentJourneyId(created.id);
+
+    // 5️⃣ Atualizar estado local da jornada
     setJornada((p) => ({
       ...p,
-      inicioExpediente: nowISO(),
-      gpsInicioExpediente: gps,
+      id: created.id,
+      employee_id: employeeId,
+      date: hoje,
+      inicioExpediente: inicio,
+      gpsInicioExpediente: gps ?? null,
     }));
-    next();
-  };
 
-  const iniciarDeslocamento = async () => {
-    const gps = await getLocation();
+    // 6️⃣ Avançar para o próximo step
+    next();
+  } catch (err) {
+    console.error("Erro ao iniciar jornada:", err);
+    alert("Falha ao iniciar a jornada. Verifique conexão.");
+  }
+};
+
+  const iniciarDeslocamento = () => {
+    const deslocamentoInicio = nowISO();
+
+    // 1) Atualiza UI na hora
     setCurrent((c) => ({
       ...c,
-      deslocamentoInicio: nowISO(),
-      gpsInicio: gps,
+      deslocamentoInicio,
     }));
 
     setJornada((p) => ({
       ...p,
       atividadeAtual: "deslocamento",
     }));
+
+    // 2) GPS depois
+    getLocation().then((gps) => {
+      if (!gps) return;
+      setCurrent((c) => ({
+        ...c,
+        gpsInicio: gps,
+      }));
+    });
   };
 
-  const iniciarAtendimento = async () => {
-    const gps = await getLocation();
+  const iniciarAtendimento = () => {
+    const inicio = nowISO();
 
     setCurrent((c) => ({
       ...c,
-      atendimentoInicio: nowISO(),
-      gpsChegada: gps,
+      atendimentoInicio: inicio,
     }));
 
     setJornada((p) => ({
       ...p,
       atividadeAtual: "atendimento",
     }));
+
+    getLocation().then((gps) => {
+      if (!gps) return;
+      setCurrent((c) => ({
+        ...c,
+        gpsChegada: gps,
+      }));
+    });
   };
 
   const concluirAtendimento = () => {
@@ -220,35 +338,33 @@ useEffect(() => {
     next();
   };
 
-  // Converte File → Base64 para poder persistir no localStorage
-const fileToBase64 = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result); // retorna o Base64
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  // Converte File → Base64
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const addFotos = async (files) => {
-  const convertidos = [];
+    const convertidos = [];
 
-  for (const f of files) {
-    const base64 = await fileToBase64(f);
-    convertidos.push(base64);
-  }
+    for (const f of files) {
+      const base64 = await fileToBase64(f);
+      convertidos.push(base64);
+    }
 
-  // Atualiza o array de fotos no current (persistido)
-  updateCurrentField("fotos", [
-    ...(current.fotos || []),
-    ...convertidos
-  ]);
-};
+    updateCurrentField("fotos", [
+      ...(current.fotos || []),
+      ...convertidos,
+    ]);
+  };
 
+  const onIniciarRetornoBase = () => {
+    const time = nowISO();
 
-
-  const onIniciarRetornoBase = async () => {
-    const gps = await getLocation();
-
+    // 1) Marca retorno base rápido
     setJornada((j) => ({
       ...j,
       atividadeAtual: "retornoBase",
@@ -257,83 +373,77 @@ const fileToBase64 = (file) =>
         {
           id: crypto.randomUUID(),
           tipo: "deslocamentoParaBase",
-          time: nowISO(),
-          gps,
+          time,
+          gps: null,
           finalizado: false,
         },
       ],
     }));
+
+    // 2) GPS em background
+    getLocation().then((gps) => {
+      if (!gps) return;
+      setJornada((j) => {
+        const logs = [...(j.baseLogs || [])];
+        const idx = logs.findIndex(
+          (l) =>
+            l.tipo === "deslocamentoParaBase" &&
+            l.time === time &&
+            !l.finalizado
+        );
+        if (idx !== -1) {
+          logs[idx] = { ...logs[idx], gps };
+        }
+        return { ...j, baseLogs: logs };
+      });
+    });
   };
 
-const marcarChegadaBase = async () => {
-  const gps = await getLocation();
+  const marcarChegadaBase = () => {
+    // Troca step imediato
+    setStep(1);
 
-  setJornada((p) => {
-    const logs = [...(p.baseLogs || [])];
-    const idx = logs.findIndex(
-      (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
-    );
+    // GPS em background
+    getLocation().then((gps) => {
+      setJornada((p) => {
+        const logs = [...(p.baseLogs || [])];
+        const idx = logs.findIndex(
+          (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
+        );
 
-    if (idx !== -1) logs[idx].finalizado = true;
+        if (idx !== -1) logs[idx].finalizado = true;
 
-    logs.push({
-      id: crypto.randomUUID(),
-      tipo: "chegadaBase",
-      time: nowISO(),
-      gps,
+        logs.push({
+          id: crypto.randomUUID(),
+          tipo: "chegadaBase",
+          time: nowISO(),
+          gps,
+        });
+
+        return {
+          ...p,
+          baseLogs: logs,
+          atividadeAtual: "livre",
+          atividadeAnterior: null,
+        };
+      });
+
+      window.dispatchEvent(
+        new CustomEvent("start-new-atendimento")
+      );
     });
-
-    return {
-      ...p,
-      baseLogs: logs,
-      atividadeAtual: "livre",     // 🔥 ESSENCIAL
-      atividadeAnterior: null
-    };
-  });
-
-  window.dispatchEvent(new CustomEvent("start-new-atendimento"));
-
-  setStep(1);
-};
-
+  };
 
   const distanciaAteBase = () => {
     if (!current.gpsInicio) return null;
     return (
-      (haversine(current.gpsInicio, BASE_COORDS) / 1000).toFixed(2) + " km"
+      (haversine(current.gpsInicio, BASE_COORDS) / 1000).toFixed(2) +
+      " km"
     );
   };
 
   const startNewAtendimento = (goToStep = 1) => {
-    setCurrent({
-      tipo: "",
-      ordemTipo: "",
-      ordemNumero: "",
-      notaEnviada: null,
-      comentario: "",
-      fotos: [],
-      deslocamentoInicio: null,
-      gpsInicio: null,
-      atendimentoInicio: null,
-      finalizadoEm: null,
-      gpsChegada: null,
-      pausadoParaAlmoco: false,
-      stepAntesAlmoco: null,
-      endereco: {
-        cep: "",
-        rua: "",
-        numero: "",
-        bairro: "",
-        cidade: "",
-        estado: "",
-        lat: null,
-        lng: null,
-      },
-    });
-// try {
-// localStorage.removeItem(STORAGE_CURRENT);
-// } catch {}
-
+    setCurrent(createEmptyCurrent());
     setStep(goToStep);
   };
 
@@ -349,7 +459,7 @@ const marcarChegadaBase = async () => {
     try {
       const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       const data = await res.json();
-      console.log(data, cep)
+      console.log(data, cep);
 
       if (!data.erro) {
         updateCurrentField("endereco.rua", data.logradouro || "");
@@ -380,23 +490,73 @@ const marcarChegadaBase = async () => {
       </div>
 
       {step === 0 && (
-        <Step0_IniciarJornada {...{ Field, Label, Card, BigBtn, iniciarJornada }} />
+        <Step0_IniciarJornada
+          {...{ Field, Label, Card, BigBtn, iniciarJornada }}
+        />
       )}
 
       {step === 1 && (
-        <Step1_Tipo {...{ Field, Label, Card, BigBtn, current, updateCurrentField, next }} />
+        <Step1_Tipo
+          {...{
+            Field,
+            Label,
+            Card,
+            BigBtn,
+            current,
+            updateCurrentField,
+            next,
+          }}
+        />
       )}
 
       {step === 2 && (
-        <Step2_OS {...{ Field, Label, Card, BigBtn, Input, Select, current, updateCurrentField, next, prev }} />
+        <Step2_OS
+          {...{
+            Field,
+            Label,
+            Card,
+            BigBtn,
+            Input,
+            Select,
+            current,
+            updateCurrentField,
+            next,
+            prev,
+          }}
+        />
       )}
 
       {step === 3 && (
-        <Step3_Endereco {...{ Field, Label, Card, BigBtn, Input, current, updateCurrentField, buscarCep, next, prev }} />
+        <Step3_Endereco
+          {...{
+            Field,
+            Label,
+            Card,
+            BigBtn,
+            Input,
+            current,
+            updateCurrentField,
+            buscarCep,
+            next,
+            prev,
+          }}
+        />
       )}
 
       {step === 4 && (
-        <Step4_DeslocamentoPrep {...{ Field, Label, Card, BigBtn, current, iniciarDeslocamento, next, prev }} />
+        <Step4_DeslocamentoPrep
+          {...{
+            Field,
+            Label,
+            Card,
+            BigBtn,
+            current,
+            iniciarDeslocamento,
+            updateCurrentField,
+            next,
+            prev,
+          }}
+        />
       )}
 
       {step === 5 && (
@@ -427,7 +587,7 @@ const marcarChegadaBase = async () => {
             concluirAtendimento,
             next,
             prev,
-            addFotos,     
+            addFotos,
           }}
         />
       )}
@@ -448,22 +608,6 @@ const marcarChegadaBase = async () => {
           }}
         />
       )}
-
-      {/* {step === 8 && (
-        <Step8_AposAtendimento
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            fmt,
-            onIniciarRetornoBase,
-            startNewAtendimento,
-            next,
-          }}
-        />
-      )} */}
 
       {step === 8 && (
         <Step8_AposAtendimento

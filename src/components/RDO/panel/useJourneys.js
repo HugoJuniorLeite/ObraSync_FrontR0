@@ -1,7 +1,7 @@
 export function useJourneys() {
   const load = () => {
     try {
-      return JSON.parse(localStorage.getItem("saved_journeys")) || [];
+      return JSON.parse(localStorage.getItem("obra_sync_jornadas")) || [];
     } catch {
       return [];
     }

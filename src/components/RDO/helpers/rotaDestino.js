@@ -54,11 +54,13 @@ export async function calcularRotaEndereco(endereco) {
     const route = json.routes?.[0];
     if (!route) return null;
 
-    return {
-      distancia: route.summary.distance, // metros
-      duracao: route.summary.duration,   // segundos
-      geometry: route.geometry,          // polyline para mapa
-    };
+ return {
+  distancia: route.summary.distance,
+  duracao: route.summary.duration,
+  geometry: route.geometry,
+  destino: { lat: destino.lat, lng: destino.lng }
+};
+
   } catch (e) {
     console.error("Erro calcularRotaEndereco:", e);
     return null;

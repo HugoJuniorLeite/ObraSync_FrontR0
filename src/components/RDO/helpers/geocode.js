@@ -1,4 +1,3 @@
-
 export async function geocodeEndereco(endereco) {
   try {
     if (!endereco) return null;
@@ -14,7 +13,7 @@ export async function geocodeEndereco(endereco) {
 
     const resp = await fetch(url, {
       headers: {
-        "User-Agent": "ObraSync/1.0", // obrigatório
+        "User-Agent": "ObraSync/1.0",
       },
     });
 

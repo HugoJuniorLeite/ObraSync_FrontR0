@@ -9,7 +9,19 @@ export function getTodasJornadas() {
 }
 
 export function salvarJornada(jornada) {
-  const arr = getTodasJornadas();
-  arr.push(jornada);
-  localStorage.setItem(KEY, JSON.stringify(arr));
+  const STORAGE_JOURNEYS = "obra_sync_jornadas";
+  const raw = localStorage.getItem(STORAGE_JOURNEYS);
+  const lista = raw ? JSON.parse(raw) : [];
+
+  const idx = lista.findIndex((j) => j.id === jornada.id);
+
+  if (idx >= 0) {
+    // atualiza existente
+    lista[idx] = jornada;
+  } else {
+    // inclui nova
+    lista.push(jornada);
+  }
+
+  localStorage.setItem(STORAGE_JOURNEYS, JSON.stringify(lista));
 }

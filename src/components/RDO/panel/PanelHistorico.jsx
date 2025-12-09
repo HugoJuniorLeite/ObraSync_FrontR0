@@ -10,24 +10,82 @@ export default function PanelHistorico({
   fmt,
   msToHuman,
   exportJornadaAsPdf,
-  setRdoHistoricoView,
 }) {
-  const {
-    historicoDataFiltro,
-    setHistoricoDataFiltro,
-    setSection,
-  } = panelState;
+  const { historicoDataFiltro, setHistoricoDataFiltro, setSection } =
+    panelState;
 
   const { getAll } = useJourneys();
 
-  const jornadas = getAll().sort((a, b) => {
-    const da = new Date(a.inicioExpediente || a.date);
-    const db = new Date(b.inicioExpediente || b.date);
-    return db - da;
-  });
+  // 🔥 Normaliza QUALQUER formato para ISO SEM HORA
+ const normalizarData = (j) => {
+  const norm = (value) => {
+    if (!value) return null;
+
+    // Se já é ISO (2025-12-07 ou 2025-12-07T10:25:00Z)
+    if (value.includes("-")) return value;
+
+    // Se vier no formato BR "dd/mm/yyyy" -> converte para ISO sem hora
+    if (value.includes("/")) {
+      const [dd, mm, yyyy] = value.split(" ")[0].split("/");
+      const hora = value.split(" ")[1] || "";
+      return `${yyyy}-${mm}-${dd}${hora ? `T${hora}` : ""}`;
+    }
+
+    return value;
+  };
+
+  return {
+    ...j,
+    date: norm(j.date),
+    inicioExpediente: norm(j.inicioExpediente),
+    fimExpediente: norm(j.fimExpediente),
+  };
+};
+
+
+  // 🔥 Sempre gera yyyy-mm-dd
+ const toDateKey = (value) => {
+  if (!value) return "";
+
+  const base = value.split("T")[0]; // mantém ISO puro YYYY-MM-DD
+
+  // se vier BR
+  if (base.includes("/")) {
+    const [dd, mm, yyyy] = base.split("/");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return base; // ISO
+};
+
+
+  // 🔥 Converte ISO → BR
+  const dataBR = (iso) => {
+    if (!iso) return "";
+    const [yyyy, mm, dd] = iso.split("-");
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+ const parseDate = (j) => {
+  const raw = j.inicioExpediente || j.date;
+
+  try {
+    return new Date(raw);
+  } catch {
+    return new Date(0);
+  }
+};
+
+
+  // 🔥 OBRIGATÓRIO: normalizar ANTES de ordenar
+  const jornadas = getAll()
+    .map(normalizarData)
+    .sort((a, b) => parseDate(b) - parseDate(a));
+
+  const filtroISO = toDateKey(historicoDataFiltro);
 
   const filtradas = jornadas.filter((j) =>
-    historicoDataFiltro ? j.date === historicoDataFiltro : true
+    historicoDataFiltro ? toDateKey(j.date) === filtroISO : true
   );
 
   return (
@@ -63,15 +121,15 @@ export default function PanelHistorico({
         </div>
       )}
 
-      {filtradas.map((j, idx) => {
+      {filtradas.map((j) => {
         const { atendimentoMs, deslocamentoMs } = calcularTotais(j);
         const jornadaMs = calcularJornadaTotal(j);
         const distKm = (calcularDistanciaTotal(j) / 1000).toFixed(2);
 
         return (
-          <Card key={j.id || idx} style={{ marginTop: 12 }}>
+          <Card key={j.id} style={{ marginTop: 12 }}>
             <div style={{ fontWeight: 700, marginBottom: 6 }}>
-              Jornada • {j.date}
+              Jornada • {dataBR(j.date)}
             </div>
 
             <div style={{ color: "#9fb4c9", fontSize: ".85rem" }}>
@@ -88,26 +146,32 @@ export default function PanelHistorico({
               }}
             >
               <div style={{ fontSize: ".85rem" }}>
-                <strong>Jornada:</strong> {msToHuman(jornadaMs)}<br />
-                <strong>Atendimento:</strong> {msToHuman(atendimentoMs)}<br />
+                <strong>Jornada:</strong> {msToHuman(jornadaMs)} <br />
+                <strong>Atendimento:</strong> {msToHuman(atendimentoMs)} <br />
                 <strong>Deslocamento:</strong> {msToHuman(deslocamentoMs)}
               </div>
 
               <div style={{ fontSize: ".85rem" }}>
-                <strong>Distância:</strong> {distKm} km<br />
+                <strong>Distância:</strong> {distKm} km <br />
                 <strong>Almoços:</strong> {j.almocos?.length || 0}
               </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <BigBtn onClick={() => {
-                panelState.setRdoHistoricoView(j)
-                panelState.setSection("preview_rdo");
-              }} style={{ flex: 1 }}>
+              <BigBtn
+                onClick={() => {
+                  panelState.setRdoHistoricoView(j);
+                  panelState.setSection("preview_rdo");
+                }}
+                style={{ flex: 1 }}
+              >
                 Ver RDO
               </BigBtn>
 
-              <BigBtn onClick={() => exportJornadaAsPdf(j)} style={{ flex: 1 }}>
+              <BigBtn
+                onClick={() => exportJornadaAsPdf(j)}
+                style={{ flex: 1 }}
+              >
                 Baixar PDF
               </BigBtn>
             </div>
