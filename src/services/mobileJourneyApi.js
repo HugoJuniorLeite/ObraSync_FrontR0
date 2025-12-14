@@ -144,23 +144,56 @@ export async function addRoutePoint(attendanceId, point) {
  *   solicitanteSuspensao
  * }
  */
-export async function addLunch(journeyId, lunch) {
+export async function addLunch(lunchId, lunch) {
+  console.log("INICIAR ALMOÇO", lunch)
   const payload = {
     inicio: lunch.inicio ?? null,
-    fim: lunch.fim ?? null,
-    lat_inicio: lunch.latInicio ?? null,
-    lng_inicio: lunch.lngInicio ?? null,
-    lat_fim: lunch.latFim ?? null,
-    lng_fim: lunch.lngFim ?? null,
-    suspenso_em: lunch.suspensoEm ?? null,
-    lat_suspenso: lunch.latSuspenso ?? null,
-    lng_suspenso: lunch.lngSuspenso ?? null,
-    justificativa_suspensao: lunch.justificativaSuspensao ?? null,
-    solicitante_suspensao: lunch.solicitanteSuspensao ?? null,
+    // fim: lunch.fim ?? null,
+    lat_inicio: lunch.lat_inicio ?? null,
+    lng_inicio: lunch.lng_inicio ?? null,
+    // lat_fim: lunch.latFim ?? null,
+    // lng_fim: lunch.lngFim ?? null,
+    // suspenso_em: lunch.suspensoEm ?? null,
+    // lat_suspenso: lunch.latSuspenso ?? null,
+    // lng_suspenso: lunch.lngSuspenso ?? null,
+    // justificativa_suspensao: lunch.justificativaSuspensao ?? null,
+    // solicitante_suspensao: lunch.solicitanteSuspensao ?? null,
   };
 
   const { data } = await api.post(
-    `/mobile-journeys/${journeyId}/lunches`,
+    `/mobile-journeys/${lunchId}/lunches`,
+    payload
+  );
+  return data;
+}
+
+export async function finishLunch(lunchId, lunch) {
+    console.log("FINALIZAR ALMOÇO", lunch)
+  const payload = {
+    fim: lunch.fim ?? null,
+    lat_fim: lunch.lat_fim ?? null,
+    lng_fim: lunch.lng_fim ?? null,
+  };
+
+  const { data } = await api.patch(
+    `/mobile-lunches/${lunchId}/finish`,
+    payload
+  );
+  return data;
+}
+
+export async function suspendLunch(journeyId, lunch) {
+  console.log("SUSPENDER ALMOÇO",lunch)
+  const payload = {
+    suspenso_em: lunch.suspensoEm ?? null,
+    lat_suspenso: lunch.lat_suspenso ?? null,
+    lng_suspenso: lunch.lng_suspenso ?? null,
+    justificativa_suspensao: lunch.justificativa_suspensao ?? null,
+    solicitante_suspensao: lunch.solicitante_suspensao ?? null,
+  };
+
+  const { data } = await api.patch(
+    `/mobile-lunches/${journeyId}/suspend`,
     payload
   );
   return data;
@@ -188,7 +221,7 @@ export async function addBaseLog(journeyId, log) {
   console.log("PAYLOAD API", payload)
 
   const { data } = await api.post(
-    `/mobile-journeys/${journeyId}/base-logs`,payload);
+    `/mobile-journeys/${journeyId}/base-logs`, payload);
   return data;
 }
 
@@ -223,6 +256,9 @@ const mobileJourneyApi = {
   addAttendance,
   addRoutePoint,
   addLunch,
+  finishLunch,
+  suspendLunch,
+
   addBaseLog,
   listJourneys,
   getJourneyById,

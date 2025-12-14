@@ -74,7 +74,7 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) return JSON.parse(saved);
-    } catch (err) {}
+    } catch (err) { }
 
     return {
       id: uuid(),
@@ -149,51 +149,99 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     iniciarAlmoco();
   };
 
-  const iniciarAlmoco = () => {
-    const inicio = nowISO();
+  //-----------------------------------------------------------------
+  //INICIAR ALMOCO
+  //---------------------------------------------------------------=
 
-    // 1) Atualiza jornada imediatamente (sem depender do GPS ainda)
-    setJornada((p) => ({
-      ...p,
-      almocos: [
-        ...p.almocos,
-        {
-          id: uuid(),
-          inicio,
-          fim: null,
-          latInicio: null,
-          lngInicio: null,
-          suspensoEm: null,
-          solicitanteSuspensao: null,
-          justificativaSuspensao: null,
-        },
-      ],
-      atividadeAnterior: p.atividadeAtual,
-      atividadeAtual: "pausadoParaAlmoco",
-    }));
+  // const iniciarAlmoco = async () => {
+  //   const inicio = nowISO();
+  //   const gps = await getLocation();
 
-    // 2) Dispara evento para o Wizard pausar
-    window.dispatchEvent(
-      new CustomEvent("pause-for-lunch", { detail: { stepBefore: wizardStep } })
-    );
+  //   // 1) Atualiza jornada imediatamente (sem depender do GPS ainda)
+  //   setJornada((p) => ({
+  //     ...p,
+  //     almocos: [
+  //       ...p.almocos,
+  //       {
+  //         id: uuid(),
+  //         inicio,
+  //         fim: null,
+  //         latInicio: null,
+  //         lngInicio: null,
+  //         suspensoEm: null,
+  //         solicitanteSuspensao: null,
+  //         justificativaSuspensao: null,
+  //       },
+  //     ],
+  //     atividadeAnterior: p.atividadeAtual,
+  //     atividadeAtual: "pausadoParaAlmoco",
+  //   }));
 
-    // 3) GPS em background
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setJornada((p) => {
-        const almocos = [...p.almocos];
-        const idx = almocos.length - 1;
-        if (idx >= 0) {
-          almocos[idx] = {
-            ...almocos[idx],
-            latInicio: gps.lat,
-            lngInicio: gps.lng,
-          };
-        }
-        return { ...p, almocos };
-      });
-    });
-  };
+  //   await mobileJourneyApi.addLunch(jornada.id, {
+  //     inicio,
+  //     lat_inicio: gps?.lat ?? null,
+  //     lng_inicio: gps?.lng ?? null,
+  //   });
+
+  //   // 2) Dispara evento para o Wizard pausar
+  //   window.dispatchEvent(
+  //     new CustomEvent("pause-for-lunch", { detail: { stepBefore: wizardStep } })
+  //   );
+
+  //   // // 3) GPS em background
+  //   // getLocation().then((gps) => {
+  //   //   if (!gps) return;
+  //   //   setJornada((p) => {
+  //   //     const almocos = [...p.almocos];
+  //   //     const idx = almocos.length - 1;
+  //   //     if (idx >= 0) {
+  //   //       almocos[idx] = {
+  //   //         ...almocos[idx],
+  //   //         latInicio: gps.lat,
+  //   //         lngInicio: gps.lng,
+  //   //       };
+  //   //     }
+  //   //     return { ...p, almocos };
+  //   //   });
+  //   // });
+  // };
+
+  const iniciarAlmoco = async () => {
+  const inicio = nowISO();
+  const gps = await getLocation();
+
+  const created = await mobileJourneyApi.addLunch(jornada.id, {
+    inicio,
+    lat_inicio: gps?.lat,
+    lng_inicio: gps?.lng,
+  });
+
+  setJornada((p) => ({
+    ...p,
+    almocos: [
+      ...p.almocos,
+      {
+        id: created.id, // ✅ ID REAL DO BANCO
+        inicio,
+        fim: null,
+        latInicio: gps?.lat ?? null,
+        lngInicio: gps?.lng ?? null,
+      },
+    ],
+    activeLunchId: created.id, // 🔥 ESSENCIAL
+    atividadeAnterior: p.atividadeAtual,
+    atividadeAtual: "pausadoParaAlmoco",
+  }));
+
+  window.dispatchEvent(
+    new CustomEvent("pause-for-lunch", { detail: { stepBefore: wizardStep } })
+  );
+};
+
+//------------------------------------------------------------------
+//FINALIZAR ALMOCO
+//------------------------------------------------------------------
+
 
   const validarFinalizarAlmoco = () => {
     const ultimo = jornada.almocos[jornada.almocos.length - 1];
@@ -208,89 +256,180 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     finalizarAlmoco();
   };
 
-  const finalizarAlmoco = () => {
-    const fim = nowISO();
+  // const finalizarAlmoco = async () => {
+  //   const fim = nowISO();
+  //   const gps = await getLocation();
 
-    // 1) Atualiza jornada rapidamente
-    setJornada((p) => {
-      const almocos = [...p.almocos];
-      const idx = almocos.length - 1;
 
-      if (idx >= 0) {
-        const almocoAntigo = almocos[idx];
-        almocos[idx] = {
-          ...almocoAntigo,
-          fim,
-        };
-      }
+  //   // 1) Atualiza jornada rapidamente
+  //   setJornada((p) => {
+  //     const almocos = [...p.almocos];
+  //     const idx = almocos.length - 1;
 
-      return {
-        ...p,
-        almocos,
-        atividadeAtual: p.atividadeAnterior || "livre",
-        atividadeAnterior: null,
-      };
-    });
+  //     if (idx >= 0) {
+  //       const almocoAntigo = almocos[idx];
+  //       almocos[idx] = {
+  //         ...almocoAntigo,
+  //         fim,
+  //       };
+  //     }
 
-    // 2) Notifica que almoço acabou
-    window.dispatchEvent(new CustomEvent("lunch-finished"));
+  //     return {
+  //       ...p,
+  //       almocos,
+  //       atividadeAtual: p.atividadeAnterior || "livre",
+  //       atividadeAnterior: null,
+  //     };
+  //   });
 
-    // 3) GPS em background (latFim / lngFim)
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setJornada((p) => {
-        const almocos = [...p.almocos];
-        const idx = almocos.length - 1;
-        if (idx >= 0) {
-          const almocoAntigo = almocos[idx];
-          almocos[idx] = {
-            ...almocoAntigo,
-            latFim: gps.lat ?? almocoAntigo.latFim ?? null,
-            lngFim: gps.lng ?? almocoAntigo.lngFim ?? null,
-          };
-        }
-        return { ...p, almocos };
-      });
-    });
-  };
+  //   await mobileJourneyApi.finishLunch(jornada.id, {
+  //     fim,
+  //     lat_fim: gps?.lat ?? null,
+  //     lng_fim: gps?.lng ?? null,
+  //   });
 
-  const finalizarAlmocoEarly = () => {
+
+  //   // 2) Notifica que almoço acabou
+  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
+
+  //   // 3) GPS em background (latFim / lngFim)
+  //   // getLocation().then((gps) => {
+  //   //   if (!gps) return;
+  //   //   setJornada((p) => {
+  //   //     const almocos = [...p.almocos];
+  //   //     const idx = almocos.length - 1;
+  //   //     if (idx >= 0) {
+  //   //       const almocoAntigo = almocos[idx];
+  //   //       almocos[idx] = {
+  //   //         ...almocoAntigo,
+  //   //         latFim: gps.lat ?? almocoAntigo.latFim ?? null,
+  //   //         lngFim: gps.lng ?? almocoAntigo.lngFim ?? null,
+  //   //       };
+  //   //     }
+  //   //     return { ...p, almocos };
+  //   //   });
+  //   // });
+  // };
+
+  const finalizarAlmoco = async () => {
+  const fim = nowISO();
+  const gps = await getLocation();
+  const lunchId = jornada.activeLunchId;
+
+  if (!lunchId) return;
+
+  await mobileJourneyApi.finishLunch(lunchId, {
+    fim,
+    lat_fim: gps?.lat,
+    lng_fim: gps?.lng,
+  });
+
+  setJornada((p) => ({
+    ...p,
+    almocos: p.almocos.map((a) =>
+      a.id === lunchId ? { ...a, fim } : a
+    ),
+    activeLunchId: null,
+    atividadeAtual: p.atividadeAnterior || "livre",
+    atividadeAnterior: null,
+  }));
+
+  window.dispatchEvent(new CustomEvent("lunch-finished"));
+};
+
+
+  const finalizarAlmocoEarly = async () => {
     setShowEarlyFinishModal(false);
-    finalizarAlmoco();
+    await finalizarAlmoco();
   };
 
-  const confirmarSuspenderAlmoco = () => {
-    const agora = nowISO();
+  //----------------------------------------------------------------
+  //SUSPENDER ALMOÇO
+  //---------------------------------------------------------------
 
-    setJornada((p) => {
-      const almocos = [...p.almocos];
-      const idx = almocos.length - 1;
+  // const confirmarSuspenderAlmoco = async () => {
+  //   const agora = nowISO();
+  //   const gps = await getLocation();
 
-      if (idx >= 0) {
-        almocos[idx].suspensoEm = agora;
-        almocos[idx].justificativaSuspensao = motivoSuspensao;
-        almocos[idx].solicitanteSuspensao = solicitante;
-      }
 
-      return {
-        ...p,
-        almocos,
-        atividadeAtual: p.atividadeAnterior || "livre",
-        atividadeAnterior: null,
-      };
-    });
+  //   setJornada((p) => {
+  //     const almocos = [...p.almocos];
+  //     const idx = almocos.length - 1;
 
-    setMotivoSuspensao("");
-    setSolicitante("");
-    setShowSuspenderModal(false);
+  //     if (idx >= 0) {
+  //       almocos[idx].suspensoEm = agora;
+  //       almocos[idx].justificativaSuspensao = motivoSuspensao;
+  //       almocos[idx].solicitanteSuspensao = solicitante;
+  //     }
 
-    window.dispatchEvent(new CustomEvent("lunch-finished"));
-  };
+  //     return {
+  //       ...p,
+  //       almocos,
+  //       atividadeAtual: p.atividadeAnterior || "livre",
+  //       atividadeAnterior: null,
+  //     };
+  //   });
 
-  const confirmarPausaParaAlmoco = () => {
-    iniciarAlmoco();
-    setShowPausarParaAlmocoModal(false);
-  };
+  //   await mobileJourneyApi.suspendLunch(jornada.id, {
+  //     suspenso_em: agora,
+  //     lat_suspenso: gps?.lat ?? null,
+  //     lng_suspenso: gps?.lng ?? null,
+  //     justificativa_suspensao: motivoSuspensao,
+  //     solicitante_suspensao: solicitante,
+  //   });
+
+
+  //   setMotivoSuspensao("");
+  //   setSolicitante("");
+  //   setShowSuspenderModal(false);
+
+  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
+  // };
+
+  // const confirmarPausaParaAlmoco = () => {
+  //   iniciarAlmoco();
+  //   setShowPausarParaAlmocoModal(false);
+  // };
+
+const confirmarSuspenderAlmoco = async () => {
+  const agora = nowISO();
+  const gps = await getLocation();
+  const lunchId = jornada.activeLunchId;
+
+  if (!lunchId) return;
+
+  await mobileJourneyApi.suspendLunch(lunchId, {
+    suspenso_em: agora,
+    lat_suspenso: gps?.lat,
+    lng_suspenso: gps?.lng,
+    justificativa_suspensao: motivoSuspensao,
+    solicitante_suspensao: solicitante,
+  });
+
+  setJornada((p) => ({
+    ...p,
+    almocos: p.almocos.map((a) =>
+      a.id === lunchId
+        ? {
+            ...a,
+            suspensoEm: agora,
+            justificativaSuspensao: motivoSuspensao,
+            solicitanteSuspensao: solicitante,
+          }
+        : a
+    ),
+    activeLunchId: null,
+    atividadeAtual: p.atividadeAnterior || "livre",
+    atividadeAnterior: null,
+  }));
+
+  setMotivoSuspensao("");
+  setSolicitante("");
+  setShowSuspenderModal(false);
+
+  window.dispatchEvent(new CustomEvent("lunch-finished"));
+};
+
 
   // // ---- Retorno à base ----
   // const onIniciarRetornoBase = () => {
@@ -431,58 +570,58 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   //     salvarJornada(jornadaComGps);
   //   });
   // };
-const encerrarExpediente = async () => {
-  const assinatura = sigRef.current?.toDataURL();
+  const encerrarExpediente = async () => {
+    const assinatura = sigRef.current?.toDataURL();
 
-  // 1️⃣ monta jornada final SEM LIMPAR NADA AINDA
-  const jornadaFinalBase = {
-    ...jornada,
-    fimExpediente: nowISO(),
-    assinatura: assinatura || null,
+    // 1️⃣ monta jornada final SEM LIMPAR NADA AINDA
+    const jornadaFinalBase = {
+      ...jornada,
+      fimExpediente: nowISO(),
+      assinatura: assinatura || null,
+    };
+
+    // 2️⃣ pega GPS (pode demorar, mas não tem problema!)
+    let gps = null;
+    try {
+      gps = await getLocation();
+    } catch { }
+
+    // 3️⃣ gera versão final
+    const jornadaFinal = {
+      ...jornadaFinalBase,
+      gpsFimExpediente: gps || null,
+    };
+
+    // 4️⃣ SALVA IMEDIATAMENTE
+    salvarJornada(jornadaFinal);
+
+    alert("Jornada encerrada com sucesso!");
+
+    // 5️⃣ AGORA sim limpa storages — DEPOIS de salvar
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("wizard_step");
+    localStorage.removeItem("wizard_state");
+
+    // 6️⃣ limpa UI
+    sigRef.current?.clear();
+    setSignatureEnabled(false);
+
+    // 7️⃣ gera nova jornada limpa
+    setJornada({
+      id: uuid(),
+      date: new Date().toISOString().split("T")[0],
+      inicioExpediente: null,
+      fimExpediente: null,
+      atendimentos: [],
+      almocos: [],
+      atividadeAtual: "livre",
+      atividadeAnterior: null,
+      baseLogs: [],
+    });
+
+    setWizardStep(0);
+    setTab(0);
   };
-
-  // 2️⃣ pega GPS (pode demorar, mas não tem problema!)
-  let gps = null;
-  try {
-    gps = await getLocation();
-  } catch {}
-
-  // 3️⃣ gera versão final
-  const jornadaFinal = {
-    ...jornadaFinalBase,
-    gpsFimExpediente: gps || null,
-  };
-
-  // 4️⃣ SALVA IMEDIATAMENTE
-  salvarJornada(jornadaFinal);
-
-  alert("Jornada encerrada com sucesso!");
-
-  // 5️⃣ AGORA sim limpa storages — DEPOIS de salvar
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem("wizard_step");
-  localStorage.removeItem("wizard_state");
-
-  // 6️⃣ limpa UI
-  sigRef.current?.clear();
-  setSignatureEnabled(false);
-
-  // 7️⃣ gera nova jornada limpa
-  setJornada({
-    id: uuid(),
-    date: new Date().toISOString().split("T")[0],
-    inicioExpediente: null,
-    fimExpediente: null,
-    atendimentos: [],
-    almocos: [],
-    atividadeAtual: "livre",
-    atividadeAnterior: null,
-    baseLogs: [],
-  });
-
-  setWizardStep(0);
-  setTab(0);
-};
 
 
 
