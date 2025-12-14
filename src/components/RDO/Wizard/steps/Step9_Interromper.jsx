@@ -15,6 +15,7 @@ export default function Step9_Interromper({
   const [erro, setErro] = useState("");
 
   const handleConfirmar = () => {
+    console.log("INTERROMPERASONTEXT", interromperReasonText)
     // validação obrigatória
     if (!interromperReasonText || interromperReasonText.trim() === "") {
       setErro("Por favor, descreva o motivo da interrupção.");
@@ -24,8 +25,8 @@ export default function Step9_Interromper({
     setErro("");
     updateCurrentField("tipo", "externo");
 
-    confirmarInterromperRetorno(); // executa função
-    setStep(2); // volta para Step 1 conforme solicitado
+    confirmarInterromperRetorno(interromperReasonText); // executa função
+    // setStep(2); // volta para Step 1 conforme solicitado
   };
 
   return (

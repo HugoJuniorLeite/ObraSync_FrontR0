@@ -8,7 +8,8 @@ export default function Step6_AtendimentoAtivo({
   BigBtn,
   current,
   updateCurrentField,
-  concluirAtendimento,
+  finalizarAtendimento,
+  atualizarAtendimento,
   next,
   prev,
   addFotos, // ← função passada pelo WizardController
@@ -53,7 +54,7 @@ export default function Step6_AtendimentoAtivo({
   const handleFinalizar = () => {
     if (!validarAntesDeFinalizar()) return;
 
-    concluirAtendimento();
+    finalizarAtendimento();
     next();
   };
 
@@ -102,6 +103,7 @@ export default function Step6_AtendimentoAtivo({
                 }}
                 onClick={() => {
                   updateCurrentField("querComentario", "sim");
+                  // atualizarAtendimento({querComentario: "sim"});
                 }}
               >
                 Sim
@@ -117,6 +119,9 @@ export default function Step6_AtendimentoAtivo({
                 onClick={() => {
                   updateCurrentField("querComentario", "nao");
                   updateCurrentField("comentario", "");
+
+                  // atualizarAtendimento({querComentario: "nao"});
+                  // atualizarAtendimento({comentario: ""});
                 }}
               >
                 Não
@@ -163,7 +168,10 @@ export default function Step6_AtendimentoAtivo({
                   borderColor: current.querFotos === "sim" ? "#38bdf8" : "#1e3a8a",
                   color: current.querFotos === "sim" ? "#082f49" : "#dbeafe",
                 }}
-                onClick={() => updateCurrentField("querFotos", "sim")}
+                onClick={() => {
+                  updateCurrentField("querFotos", "sim");
+                  // atualizarAtendimento({querFotos: "sim"});
+                }}
               >
                 Sim
               </BigBtn>
@@ -178,6 +186,8 @@ export default function Step6_AtendimentoAtivo({
                 onClick={() => {
                   updateCurrentField("querFotos", "nao");
                   updateCurrentField("fotos", []);
+                  // atualizarAtendimento({querFotos: "nao"});
+                  // atualizarAtendimento({fotos: []});
                 }}
               >
                 Não
@@ -209,6 +219,10 @@ export default function Step6_AtendimentoAtivo({
                       style={{ display: "none" }}
                       onChange={async (e) => {
                         await addFotos(Array.from(e.target.files));
+
+                        // atualizarAtendimento({
+                        //   fotos: [...current.fotos],
+                        // })
                       }}
                     />
                   </label>

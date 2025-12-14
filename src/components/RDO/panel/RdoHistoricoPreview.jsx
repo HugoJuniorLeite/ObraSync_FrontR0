@@ -11,7 +11,7 @@ export default function RdoHistoricoPreview({
   jornada,
   exportJornadaAsPdf,
 }) {
-    // ⬇️ COLOQUE AQUI
+  // ⬇️ COLOQUE AQUI
   console.log("🔥 DEBUG_JORNADA:", jornada);
   console.log("🔥 DEBUG_ATENDIMENTOS:", jornada?.atendimentos);
 
@@ -73,14 +73,14 @@ export default function RdoHistoricoPreview({
     }
 
     // Atualiza no localStorage (mesmo padrão do monolito)
-    const KEY = "saved_journeys";
+    const KEY = "obra_sync_jornadas";
     const todas = JSON.parse(localStorage.getItem(KEY)) || [];
     const jIndex = todas.findIndex((j) => j.id === novaJornada.id);
 
     if (jIndex !== -1) {
       todas[jIndex] = novaJornada;
       localStorage.setItem(KEY, JSON.stringify(todas));
-      
+
     }
 
     setRdoHistoricoView(novaJornada);

@@ -176,17 +176,19 @@ export async function addLunch(journeyId, lunch) {
  * }
  */
 export async function addBaseLog(journeyId, log) {
+
   const payload = {
     tipo: log.tipo,
     time: log.time,
-    lat: log.gps?.lat ?? null,
-    lng: log.gps?.lng ?? null,
+    lat: log.lat ?? null,
+    lng: log.lng ?? null,
+    motivo: log.motivo ?? null,
   };
 
+  console.log("PAYLOAD API", payload)
+
   const { data } = await api.post(
-    `/mobile-journeys/${journeyId}/base-logs`,
-    payload
-  );
+    `/mobile-journeys/${journeyId}/base-logs`,payload);
   return data;
 }
 

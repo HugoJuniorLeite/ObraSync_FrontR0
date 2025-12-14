@@ -40,6 +40,7 @@ import { Clock, List, FileText, BarChart2 } from "lucide-react";
 import FirstPanel from "../panel/FirstPanel";
 import usePanelState from "../panel/usePanelState";
 import { salvarJornada } from "../panel/jornadaStorage";
+import mobileJourneyApi from "../../../services/mobileJourneyApi";
 
 const STORAGE_KEY = "obra_sync_jornada_v1";
 
@@ -291,90 +292,92 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     setShowPausarParaAlmocoModal(false);
   };
 
-  // ---- Retorno à base ----
-  const onIniciarRetornoBase = () => {
-    const time = nowISO();
+  // // ---- Retorno à base ----
+  // const onIniciarRetornoBase = () => {
+  //   const time = nowISO();
 
-    // 1) Marca retorno base rápido
-    setJornada((p) => ({
-      ...p,
-      atividadeAtual: "retornoBase",
-      baseLogs: [
-        ...p.baseLogs,
-        {
-          id: uuid(),
-          tipo: "deslocamentoParaBase",
-          time,
-          gps: null,
-          finalizado: false,
-        },
-      ],
-    }));
+  //   // 1) Marca retorno base rápido
+  //   setJornada((p) => ({
+  //     ...p,
+  //     atividadeAtual: "retornoBase",
+  //     baseLogs: [
+  //       ...p.baseLogs,
+  //       {
+  //         id: uuid(),
+  //         tipo: "deslocamentoParaBase",
+  //         time,
+  //         gps: null,
+  //         finalizado: false,
+  //       },
+  //     ],
+  //   }));
 
-    // 2) GPS depois
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setJornada((p) => {
-        const logs = [...p.baseLogs];
-        const idx = logs.findIndex(
-          (l) =>
-            l.tipo === "deslocamentoParaBase" &&
-            l.time === time &&
-            !l.finalizado
-        );
-        if (idx !== -1) {
-          logs[idx] = { ...logs[idx], gps };
-        }
-        return { ...p, baseLogs: logs };
-      });
-    });
-  };
+  //   // 2) GPS depois
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setJornada((p) => {
+  //       const logs = [...p.baseLogs];
+  //       const idx = logs.findIndex(
+  //         (l) =>
+  //           l.tipo === "deslocamentoParaBase" &&
+  //           l.time === time &&
+  //           !l.finalizado
+  //       );
+  //       if (idx !== -1) {
+  //         logs[idx] = { ...logs[idx], gps };
+  //       }
+  //       return { ...p, baseLogs: logs };
+  //     });
+  //   });
+  // };
 
-  const onConfirmarChegadaBase = () => {
-    if (jornada.atividadeAtual === "pausadoParaAlmoco") {
-      alert("Finalize o almoço antes de retornar.");
-      return;
-    }
 
-    const time = nowISO();
 
-    // 1) Atualiza estado imediatamente
-    setJornada((p) => {
-      const logs = [...p.baseLogs];
-      const idx = logs.findIndex(
-        (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
-      );
-      if (idx !== -1) logs[idx].finalizado = true;
+  // const onConfirmarChegadaBase = () => {
+  //   if (jornada.atividadeAtual === "pausadoParaAlmoco") {
+  //     alert("Finalize o almoço antes de retornar.");
+  //     return;
+  //   }
 
-      logs.push({
-        id: uuid(),
-        tipo: "chegadaBase",
-        time,
-        gps: null,
-      });
+  //   const time = nowISO();
 
-      return { ...p, baseLogs: logs };
-    });
+  //   // 1) Atualiza estado imediatamente
+  //   setJornada((p) => {
+  //     const logs = [...p.baseLogs];
+  //     const idx = logs.findIndex(
+  //       (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
+  //     );
+  //     if (idx !== -1) logs[idx].finalizado = true;
 
-    window.dispatchEvent(new CustomEvent("start-new-atendimento"));
-    setWizardStep(1);
-    setTab(0);
+  //     logs.push({
+  //       id: uuid(),
+  //       tipo: "chegadaBase",
+  //       time,
+  //       gps: null,
+  //     });
 
-    // 2) GPS em background
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setJornada((p) => {
-        const logs = [...p.baseLogs];
-        const idx = logs.findIndex(
-          (l) => l.tipo === "chegadaBase" && l.time === time
-        );
-        if (idx !== -1) {
-          logs[idx] = { ...logs[idx], gps };
-        }
-        return { ...p, baseLogs: logs };
-      });
-    });
-  };
+  //     return { ...p, baseLogs: logs };
+  //   });
+
+  //   window.dispatchEvent(new CustomEvent("start-new-atendimento"));
+  //   setWizardStep(1);
+  //   setTab(0);
+
+  //   // 2) GPS em background
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setJornada((p) => {
+  //       const logs = [...p.baseLogs];
+  //       const idx = logs.findIndex(
+  //         (l) => l.tipo === "chegadaBase" && l.time === time
+  //       );
+  //       if (idx !== -1) {
+  //         logs[idx] = { ...logs[idx], gps };
+  //       }
+  //       return { ...p, baseLogs: logs };
+  //     });
+  //   });
+  // };
 
   // Encerrar expediente (rápido)
   // const encerrarExpediente = () => {

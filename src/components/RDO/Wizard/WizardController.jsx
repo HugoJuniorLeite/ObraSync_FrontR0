@@ -1,12 +1,12 @@
 import { useContext } from "react";
-import { AuthContext } from "../../../contexts/AuthContext"; 
+import { AuthContext } from "../../../contexts/AuthContext";
 // WizardController.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { nowISO } from "../helpers/time";
 import { getLocation } from "../helpers/location";
 
 
-import mobileJourneyApi from "../../../services/mobileJourneyApi";
+// import apiMobileJourney from "../../../services/mobileJourneyApi";
 import { saveCurrentJourneyId } from "../../../utils/journeyStore";
 
 import {
@@ -30,6 +30,10 @@ import Step6_AtendimentoAtivo from "./steps/Step6_AtendimentoAtivo";
 import Step7_AtendimentoConcluido from "./steps/Step7_AtendimentoConcluido";
 import Step8_AposAtendimento from "./steps/Step8_AposAtendimento";
 import Step9_Interromper from "./steps/Step9_Interromper";
+import apiMobileJourney from "../../../services/apiMobileJourney";
+import { queueRequest } from "../../../utils/offlineQueue";
+import mobileJourneyApi from "../../../services/mobileJourneyApi";
+import { compressImage } from "../../../utils/compressImage";
 
 const STORAGE_CURRENT = "wizard_current";
 
@@ -46,10 +50,10 @@ const createEmptyCurrent = () => ({
   atendimentoInicio: null,
   finalizadoEm: null,
   gpsChegada: null,
-  
+
   pausadoParaAlmoco: false,
   stepAntesAlmoco: null,
-  
+
   endereco: {
     cep: "",
     rua: "",
@@ -96,7 +100,7 @@ export default function WizardController({
   const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
   const [current, setCurrent] = useState(() => loadCurrent());
   const [interromperReasonText, setInterromperReasonText] = useState("");
-  
+
   // 🔹 Debounce para salvar no localStorage (sem fotos)
   const saveTimeoutRef = useRef(null);
 
@@ -217,126 +221,396 @@ export default function WizardController({
 
 
   const iniciarJornada = async () => {
-  try {
-    const inicio = nowISO();
-    const hoje = inicio.split("T")[0]; // YYYY-MM-DD
+    try {
+      const inicio = nowISO();
+      const hoje = inicio.split("T")[0]; // YYYY-MM-DD
 
-    // 1️⃣ GPS imediato (caso disponível)
+      // 1️⃣ GPS imediato (caso disponível)
+      const gps = await getLocation();
+
+      // 2️⃣ Identificar o técnico logado
+      // ⚠️ Ajuste essa linha conforme sua auth real!
+      // const employeeId =
+      //   jornada.employee_id ||
+      //   jornada.employeeId ||
+      //   JSON.parse(localStorage.getItem("user"))?.id || 
+      //   1; // fallback provisório
+      const employeeId = user?.id;
+
+      if (!employeeId) {
+        alert("Erro: usuário não identificado.");
+        return;
+      }
+
+
+
+      // 3️⃣ Chamar backend para criar a jornada
+      const created = await mobileJourneyApi.startJourney({
+        employeeId,
+        date: hoje,
+        inicioExpediente: inicio,
+        gpsInicio: gps ?? null,
+      });
+
+      // 4️⃣ Guardar ID da jornada atual
+      saveCurrentJourneyId(created.id);
+
+      // 5️⃣ Atualizar estado local da jornada
+      setJornada((p) => ({
+        ...p,
+        id: created.id,
+        employee_id: employeeId,
+        date: hoje,
+        inicioExpediente: inicio,
+        gpsInicioExpediente: gps ?? null,
+      }));
+
+      // 6️⃣ Avançar para o próximo step
+      next();
+    } catch (err) {
+      console.error("Erro ao iniciar jornada:", err);
+      alert("Falha ao iniciar a jornada. Verifique conexão.");
+    }
+  };
+
+  // const iniciarDeslocamento = () => {
+  //   const deslocamentoInicio = nowISO();
+
+  //   // 1) Atualiza UI na hora
+  //   setCurrent((c) => ({
+  //     ...c,
+  //     deslocamentoInicio,
+  //   }));
+
+  //   setJornada((p) => ({
+  //     ...p,
+  //     atividadeAtual: "deslocamento",
+  //   }));
+
+  //   // 2) GPS depois
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setCurrent((c) => ({
+  //       ...c,
+  //       gpsInicio: gps,
+  //     }));
+  //   });
+  // };
+
+  const iniciarDeslocamento = async () => {
+    const deslocamentoInicio = nowISO();
     const gps = await getLocation();
 
-    // 2️⃣ Identificar o técnico logado
-    // ⚠️ Ajuste essa linha conforme sua auth real!
-    // const employeeId =
-    //   jornada.employee_id ||
-    //   jornada.employeeId ||
-    //   JSON.parse(localStorage.getItem("user"))?.id || 
-    //   1; // fallback provisório
-const employeeId = user?.id;
+    // 1️⃣ Monta payload local + backend
+    const payload = {
+      tipo: current.tipo,
+      nota_enviada: current.notaEnviada === "sim",
+      ordem_tipo: current.ordemTipo,
+      // ordem_prefixo: current.ordemPrefixo,
+      ordem_numero: current.ordemNumero,
 
-if (!employeeId) {
-  alert("Erro: usuário não identificado.");
-  return;
-}
+      deslocamento_inicio: deslocamentoInicio,
+      gps_inicio: gps ?? null,
+      cep: current.endereco.cep,
+      rua: current.endereco.rua,
+      numero: current.endereco.numero,
+      bairro: current.endereco.bairro,
+      cidade: current.endereco.cidade,
+      estado: current.endereco.estado,
+      lat: current.endereco.lat,
+      lng: current.endereco.lng,
+      comentario: current.comentario ?? "",
+      notas: current.notas ?? "",
+    };
 
 
-
-    // 3️⃣ Chamar backend para criar a jornada
-    const created = await mobileJourneyApi.startJourney({
-      employeeId,
-      date: hoje,
-      inicioExpediente: inicio,
-      gpsInicio: gps ?? null,
-    });
-
-    // 4️⃣ Guardar ID da jornada atual
-    saveCurrentJourneyId(created.id);
-
-    // 5️⃣ Atualizar estado local da jornada
-    setJornada((p) => ({
-      ...p,
-      id: created.id,
-      employee_id: employeeId,
-      date: hoje,
-      inicioExpediente: inicio,
-      gpsInicioExpediente: gps ?? null,
-    }));
-
-    // 6️⃣ Avançar para o próximo step
-    next();
-  } catch (err) {
-    console.error("Erro ao iniciar jornada:", err);
-    alert("Falha ao iniciar a jornada. Verifique conexão.");
-  }
-};
-
-  const iniciarDeslocamento = () => {
-    const deslocamentoInicio = nowISO();
-
-    // 1) Atualiza UI na hora
+    // 2️⃣ Atualiza UI imediatamente (offline first)
     setCurrent((c) => ({
       ...c,
       deslocamentoInicio,
+      gpsInicio: gps,
     }));
-
-    setJornada((p) => ({
-      ...p,
-      atividadeAtual: "deslocamento",
-    }));
-
-    // 2) GPS depois
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setCurrent((c) => ({
-        ...c,
-        gpsInicio: gps,
-      }));
-    });
-  };
-
-  const iniciarAtendimento = () => {
-    const inicio = nowISO();
-
-    setCurrent((c) => ({
-      ...c,
-      atendimentoInicio: inicio,
-    }));
-
-    setJornada((p) => ({
-      ...p,
-      atividadeAtual: "atendimento",
-    }));
-
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setCurrent((c) => ({
-        ...c,
-        gpsChegada: gps,
-      }));
-    });
-  };
-
-  const concluirAtendimento = () => {
-    const final = nowISO();
 
     setJornada((j) => ({
       ...j,
-      atendimentos: [
-        ...j.atendimentos,
-        {
-          id: crypto.randomUUID(),
-          ...current,
-          finalizadoEm: final,
-        },
-      ],
+      atividadeAtual: "deslocamento",
     }));
+
+    // 3️⃣ Envia para backend (com fallback offline)
+    const journeyId = jornada.id;
+    const resp = await apiMobileJourney.createAttendance(journeyId, payload);
+
+    let attendanceId;
+
+    if (resp.ok) {
+      attendanceId = resp.data.id;
+    } else {
+      // ID OFFLINE gerado localmente
+      attendanceId = crypto.randomUUID();
+    }
+
+    // 4️⃣ Persistir no localStorage para rota e atendimento ativo
+    setJornada((j) => ({
+      ...j,
+      atendimentoAtivoId: attendanceId,
+    }));
+
+    localStorage.setItem("obsync_attendance_active", attendanceId);
+
+    // 5️⃣ Avança para próximo step
+    next();
+  };
+
+
+  //-----------------------------------------------------
+  // INICIAR ATENDIMENTO
+  //-----------------------------------------------------
+
+  // const iniciarAtendimento = () => {
+  //   const inicio = nowISO();
+
+  //   setCurrent((c) => ({
+  //     ...c,
+  //     atendimentoInicio: inicio,
+  //   }));
+
+  //   setJornada((p) => ({
+  //     ...p,
+  //     atividadeAtual: "atendimento",
+  //   }));
+
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setCurrent((c) => ({
+  //       ...c,
+  //       gpsChegada: gps,
+  //     }));
+  //   });
+  // };
+
+  // const concluirAtendimento = () => {
+  //   const final = nowISO();
+
+  //   setJornada((j) => ({
+  //     ...j,
+  //     atendimentos: [
+  //       ...j.atendimentos,
+  //       {
+  //         id: crypto.randomUUID(),
+  //         ...current,
+  //         finalizadoEm: final,
+  //       },
+  //     ],
+  //   }));
+
+  //   setCurrent((c) => ({
+  //     ...c,
+  //     finalizadoEm: final,
+  //   }));
+
+  //   next();
+  // };
+
+  const iniciarAtendimento = async () => {
+    const inicio = nowISO();
+
+    // 1️⃣ Recuperar ID do atendimento ativo criado no Step 4
+    const attendanceId = jornada.atendimentoAtivoId || localStorage.getItem("obsync_attendance_active");
+
+    if (!attendanceId) {
+      alert("Erro: atendimento ativo não encontrado.");
+      return;
+    }
+
+    // 2️⃣ GPS chegada
+    let gps = null;
+    try {
+      gps = await getLocation();
+    } catch (e) {
+      console.warn("GPS indisponível ao iniciar atendimento");
+    }
+
+    // 3️⃣ Atualiza UI imediatamente
+    setCurrent((c) => ({
+      ...c,
+      atendimentoInicio: inicio,
+      gpsChegada: gps ?? null,
+    }));
+
+    setJornada((j) => ({
+      ...j,
+      atividadeAtual: "atendimento",
+    }));
+
+    // 4️⃣ Monta payload para API
+    const payload = {
+      atendimento_inicio: inicio,
+      gps_chegada: gps ?? null,
+    };
+
+    // 5️⃣ Envia ao backend ou salva offline
+    try {
+      await apiMobileJourney.startService(attendanceId, payload);
+    } catch (err) {
+      // offline → salvar na fila
+      queueRequest(
+        `/mobile-attendances/${attendanceId}/start-service`,
+        "PATCH",
+        payload
+      );
+    }
+
+    // 6️⃣ Avança step
+    next();
+  };
+
+
+  //   const iniciarAtendimento = async () => {
+  //   const attendanceId =
+  //     jornada.atendimentoAtivoId ||
+  //     localStorage.getItem("obsync_attendance_active");
+
+  //   const inicio = nowISO();
+  //   const gps = await getLocation();
+
+  //   setCurrent((c) => ({
+  //     ...c,
+  //     atendimentoInicio: inicio,
+  //     gpsChegada: gps,
+  //   }));
+
+  //   setJornada((j) => ({
+  //     ...j,
+  //     atividadeAtual: "atendimento",
+  //   }));
+
+  //   await apiMobileJourney.startService(attendanceId, {
+  //     atendimento_inicio: inicio,
+  //     gps_chegada: gps,
+  //   });
+
+  //   next(); // vai para Step 6
+  // };
+
+
+  //-----------------------------------------------------
+  // ATUALIZAR ATENDIMENTO
+  //-----------------------------------------------------
+
+  const atualizarAtendimento = async (fields) => {
+    const attendanceId =
+      jornada.atendimentoAtivoId ||
+      localStorage.getItem("obsync_attendance_active");
+
+    if (!attendanceId) return;
+
+    // Atualiza local
+    setCurrent((c) => ({ ...c, ...fields }));
+
+    const payload = { ...fields };
+
+    try {
+      await apiMobileJourney.updateAttendance(attendanceId, payload);
+    } catch (err) {
+      queueRequest(
+        `/mobile-attendances/${attendanceId}`,
+        "PATCH",
+        payload
+      );
+    }
+  };
+
+  //-----------------------------------------------------
+  // FINALIZAR ATENDIMENTO
+  //-----------------------------------------------------
+  // const finalizarAtendimento = async () => {
+  //   const final = nowISO();
+
+  //   const attendanceId =
+  //     jornada.atendimentoAtivoId ||
+  //     localStorage.getItem("obsync_attendance_active");
+
+  //   if (!attendanceId) {
+  //     alert("Erro: atendimento não encontrado.");
+  //     return;
+  //   }
+
+  //   // Atualiza local
+  //   setCurrent((c) => ({ ...c, finalizadoEm: final }));
+
+  //   const payload = { finalizadoEm: final };
+
+  //   try {
+  //     await apiMobileJourney.finishService(attendanceId, payload);
+  //   } catch (err) {
+  //     queueRequest(
+  //       `/mobile-attendances/${attendanceId}/finish`,
+  //       "PATCH",
+  //       payload
+  //     );
+  //   }
+
+  //   // Avança para Step 7 (resumo)
+  //   next();
+  // };
+
+
+  // const finalizarAtendimento = async () => {
+  //   const attendanceId =
+  //     jornada.atendimentoAtivoId ||
+  //     localStorage.getItem("obsync_attendance_active");
+
+  //   const final = nowISO();
+
+  //   setCurrent((c) => ({
+  //     ...c,
+  //     finalizadoEm: final,
+  //   }));
+
+  //   await apiMobileJourney.finishService(attendanceId, {
+  //     finalizado_em: final,
+  //     comentario: current.comentario ?? null,
+  //     notas: current.notas ?? null,
+  //   });
+
+  //   next(); // Step 7
+  // };
+
+
+  const finalizarAtendimento = async () => {
+    const attendanceId =
+      jornada.atendimentoAtivoId ||
+      localStorage.getItem("obsync_attendance_active");
+
+    if (!attendanceId) {
+      alert("Atendimento não encontrado.");
+      return;
+    }
+
+    const payload = {
+      finalizado_em: nowISO(),
+      comentario: current.comentario || null,
+      fotos: current.fotos || [],
+    };
+
+    try {
+      await apiMobileJourney.finishService(attendanceId, payload);
+    } catch (err) {
+      queueRequest(
+        `/mobile-attendances/${attendanceId}/finish`,
+        "PATCH",
+        payload
+      );
+    }
 
     setCurrent((c) => ({
       ...c,
-      finalizadoEm: final,
+      finalizadoEm: payload.finalizado_em,
     }));
 
-    next();
+    next(); // Step 7
   };
+
 
   // Converte File → Base64
   const fileToBase64 = (file) =>
@@ -347,11 +621,13 @@ if (!employeeId) {
       reader.readAsDataURL(file);
     });
 
+
   const addFotos = async (files) => {
     const convertidos = [];
 
-    for (const f of files) {
-      const base64 = await fileToBase64(f);
+    for (const file of files) {
+      const compressed = await compressImage(file);
+      const base64 = await fileToBase64(compressed);
       convertidos.push(base64);
     }
 
@@ -361,78 +637,207 @@ if (!employeeId) {
     ]);
   };
 
-  const onIniciarRetornoBase = () => {
-    const time = nowISO();
+  //------------------------------------------------
+  //RETORNAR A BASE
+  //-------------------------------------------------
 
-    // 1) Marca retorno base rápido
-    setJornada((j) => ({
-      ...j,
+  // const onIniciarRetornoBase = () => {
+  //   const time = nowISO();
+
+  //   // 1) Marca retorno base rápido
+  //   setJornada((j) => ({
+  //     ...j,
+  //     atividadeAtual: "retornoBase",
+  //     baseLogs: [
+  //       ...(j.baseLogs || []),
+  //       {
+  //         id: crypto.randomUUID(),
+  //         tipo: "deslocamentoParaBase",
+  //         time,
+  //         gps: null,
+  //         finalizado: false,
+  //       },
+  //     ],
+  //   }));
+
+  //   // 2) GPS em background
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setJornada((j) => {
+  //       const logs = [...(j.baseLogs || [])];
+  //       const idx = logs.findIndex(
+  //         (l) =>
+  //           l.tipo === "deslocamentoParaBase" &&
+  //           l.time === time &&
+  //           !l.finalizado
+  //       );
+  //       if (idx !== -1) {
+  //         logs[idx] = { ...logs[idx], gps };
+  //       }
+  //       return { ...j, baseLogs: logs };
+  //     });
+  //   });
+  // };
+
+  const onIniciarRetornoBase = async () => {
+    if (jornada.atividadeAtual !== "livre") return;
+
+    const time = nowISO();
+    const gps = await getLocation();
+
+    // 1) Marca retorno base rápido localmente
+    setJornada((p) => ({
+      ...p,
       atividadeAtual: "retornoBase",
       baseLogs: [
-        ...(j.baseLogs || []),
+        ...p.baseLogs,
         {
           id: crypto.randomUUID(),
           tipo: "deslocamentoParaBase",
           time,
-          gps: null,
+          gps,
           finalizado: false,
+           },
+      ],
+    }));
+
+
+    await mobileJourneyApi.addBaseLog(jornada.id, {
+      tipo: "deslocamentoParaBase",
+      time,
+      lat: gps?.lat ?? null,
+      lng: gps?.lng ?? null,
+    });
+  };
+
+
+  //------------------------------------
+  //MARCAR CHEGADA A BASE
+  //--------------------------------------
+
+  // const marcarChegadaBase = () => {
+  //   // Troca step imediato
+  //   setStep(1);
+
+  //   // GPS em background
+  //   getLocation().then((gps) => {
+  //     setJornada((p) => {
+  //       const logs = [...(p.baseLogs || [])];
+  //       const idx = logs.findIndex(
+  //         (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
+  //       );
+
+  //       if (idx !== -1) logs[idx].finalizado = true;
+
+  //       logs.push({
+  //         id: crypto.randomUUID(),
+  //         tipo: "chegadaBase",
+  //         time: nowISO(),
+  //         gps,
+  //       });
+
+  //       return {
+  //         ...p,
+  //         baseLogs: logs,
+  //         atividadeAtual: "livre",
+  //         atividadeAnterior: null,
+  //       };
+  //     });
+
+  //     window.dispatchEvent(
+  //       new CustomEvent("start-new-atendimento")
+  //     );
+  //   });
+  // };
+
+  //   const marcarChegadaBase = () => {
+  //   const time = nowISO();
+
+  //   // 1) Marcar a chegada à base localmente
+  //   setJornada((j) => {
+  //     const logs = [...(j.baseLogs || [])];
+  //     const idx = logs.findIndex(
+  //       (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
+  //     );
+  //     if (idx !== -1) {
+  //       logs[idx].finalizado = true;
+  //     }
+
+  //     logs.push({
+  //       id: crypto.randomUUID(),
+  //       tipo: "chegadaBase",
+  //       time,
+  //       gps: null, // GPS após chegada
+  //     });
+
+  //     return {
+  //       ...j,
+  //       baseLogs: logs,
+  //       atividadeAtual: "livre",
+  //     };
+  //   });
+
+  //   // 2) Enviar a chegada ao backend
+  //   mobileJourneyApi.addBaseLog(jornada.id, {
+  //     tipo: "chegadaBase",
+  //     time,
+  //     gps: null,
+  //   });
+
+  //   // 3) Atualiza GPS após chegada
+  //   getLocation().then((gps) => {
+  //     if (!gps) return;
+  //     setJornada((j) => {
+  //       const logs = [...(j.baseLogs || [])];
+  //       const idx = logs.findIndex(
+  //         (l) => l.tipo === "chegadaBase" && !l.finalizado
+  //       );
+  //       if (idx !== -1) {
+  //         logs[idx] = { ...logs[idx], gps };
+  //       }
+  //       return { ...j, baseLogs: logs };
+  //     });
+
+  //     // 4) Enviar GPS ao backend
+  //     mobileJourneyApi.addBaseLog(jornada.id, {
+  //       tipo: "chegadaBase",
+  //       time,
+  //       gps,
+  //     });
+  //   });
+  // };
+
+  const marcarChegadaBase = async () => {
+      if (jornada.atividadeAtual !== "livre") return;
+
+    const time = nowISO();
+    const gps = await getLocation();
+
+    setJornada((j) => ({
+      ...j,
+      atividadeAtual: "livre",
+      baseLogs: [
+        ...(j.baseLogs || []),
+        {
+          id: crypto.randomUUID(),
+          tipo: "chegadaBase",
+          time,
+          gps,
         },
       ],
     }));
 
-    // 2) GPS em background
-    getLocation().then((gps) => {
-      if (!gps) return;
-      setJornada((j) => {
-        const logs = [...(j.baseLogs || [])];
-        const idx = logs.findIndex(
-          (l) =>
-            l.tipo === "deslocamentoParaBase" &&
-            l.time === time &&
-            !l.finalizado
-        );
-        if (idx !== -1) {
-          logs[idx] = { ...logs[idx], gps };
-        }
-        return { ...j, baseLogs: logs };
-      });
+    await mobileJourneyApi.addBaseLog(jornada.id, {
+      tipo: "chegadaBase",
+      time,
+      lat: gps?.lat ?? null,
+      lng: gps?.lng ?? null,
     });
+
+    window.dispatchEvent(new CustomEvent("start-new-atendimento"));
   };
 
-  const marcarChegadaBase = () => {
-    // Troca step imediato
-    setStep(1);
 
-    // GPS em background
-    getLocation().then((gps) => {
-      setJornada((p) => {
-        const logs = [...(p.baseLogs || [])];
-        const idx = logs.findIndex(
-          (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
-        );
-
-        if (idx !== -1) logs[idx].finalizado = true;
-
-        logs.push({
-          id: crypto.randomUUID(),
-          tipo: "chegadaBase",
-          time: nowISO(),
-          gps,
-        });
-
-        return {
-          ...p,
-          baseLogs: logs,
-          atividadeAtual: "livre",
-          atividadeAnterior: null,
-        };
-      });
-
-      window.dispatchEvent(
-        new CustomEvent("start-new-atendimento")
-      );
-    });
-  };
 
   const distanciaAteBase = () => {
     if (!current.gpsInicio) return null;
@@ -447,10 +852,55 @@ if (!employeeId) {
     setStep(goToStep);
   };
 
-  const confirmarInterromperRetorno = () => {
-    setInterromperReasonText("");
-    startNewAtendimento();
-  };
+//-------------------------------------------------------------
+// INTERROMPER DESLOCAMENTO PARA BASE
+//-------------------------------------------------------------
+
+const confirmarInterromperRetorno = async (motivo) => {
+  // if (jornada.atividadeAtual !== "retornoBase") return;
+
+  // if (!interromperReasonText?.trim()) {
+  //   alert("Informe o motivo da interrupção.");
+  //   return;
+  // }
+console.log("CONFIRMARINTERROMPERRETORNO_MOTIVO",motivo)
+  const time = nowISO();
+  const gps = await getLocation();
+
+  // 1️⃣ Atualiza estado local
+  setJornada((j) => ({
+    ...j,
+    atividadeAtual: "livre",
+    baseLogs: [
+      ...(j.baseLogs || []),
+      {
+        id: crypto.randomUUID(),
+        tipo: "retornoInterrompido",
+        time,
+        gps,
+      },
+    ],
+  }));
+
+  // 2️⃣ Persistir no backend
+  await mobileJourneyApi.addBaseLog(jornada.id, {
+    tipo: "retornoInterrompido",
+    time,
+    lat: gps?.lat ?? null,
+    lng: gps?.lng ?? null,
+    motivo,
+  });
+
+  // 3️⃣ Reset e liberação
+  // setInterromperReasonText("");
+  window.dispatchEvent(new CustomEvent("start-new-atendimento"));
+};
+
+
+  // const confirmarInterromperRetorno = () => {
+  //   setInterromperReasonText("");
+  //   startNewAtendimento();
+  // };
 
   const buscarCep = async (cep) => {
     cep = cep.replace(/\D/g, "");
@@ -584,7 +1034,8 @@ if (!employeeId) {
             BigBtn,
             current,
             updateCurrentField,
-            concluirAtendimento,
+            finalizarAtendimento,
+            atualizarAtendimento,
             next,
             prev,
             addFotos,

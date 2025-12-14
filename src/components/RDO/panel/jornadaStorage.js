@@ -1,4 +1,5 @@
-const KEY = "saved_journeys";
+const KEY = "obra_sync_jornadas";
+
 
 export function getTodasJornadas() {
   try {

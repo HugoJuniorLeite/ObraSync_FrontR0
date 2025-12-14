@@ -161,10 +161,7 @@ export default function Step5_DeslocamentoAtivo({
 
           <BigBtn
             $primary
-            onClick={() => {
-              iniciarAtendimento();
-              next();
-            }}
+            onClick={iniciarAtendimento}
           >
             Iniciar atendimento <ChevronRight size={18} />
           </BigBtn>
