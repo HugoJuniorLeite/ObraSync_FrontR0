@@ -22,6 +22,7 @@ export default function Step9_RetornoBase({
       ?.slice(-1)[0];
 
   const handleConfirmar = async () => {
+    console.log("aqui")
     setLoading(true);
 
     // Executa o marcarChegadaBase em background

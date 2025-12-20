@@ -40,7 +40,7 @@ import { Clock, List, FileText, BarChart2 } from "lucide-react";
 import FirstPanel from "../panel/FirstPanel";
 import usePanelState from "../panel/usePanelState";
 import { salvarJornada } from "../panel/jornadaStorage";
-import mobileJourneyApi from "../../../services/mobileJourneyApi";
+import mobileJourneyApi, { finishJourney } from "../../../services/mobileJourneyApi";
 
 const STORAGE_KEY = "obra_sync_jornada_v1";
 
@@ -386,10 +386,10 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   //   window.dispatchEvent(new CustomEvent("lunch-finished"));
   // };
 
-  // const confirmarPausaParaAlmoco = () => {
-  //   iniciarAlmoco();
-  //   setShowPausarParaAlmocoModal(false);
-  // };
+  const confirmarPausaParaAlmoco = () => {
+    iniciarAlmoco();
+    setShowPausarParaAlmocoModal(false);
+  };
 
 const confirmarSuspenderAlmoco = async () => {
   const agora = nowISO();
@@ -594,6 +594,19 @@ const confirmarSuspenderAlmoco = async () => {
 
     // 4️⃣ SALVA IMEDIATAMENTE
     salvarJornada(jornadaFinal);
+
+
+  // 5️⃣ 🔥 POST/PATCH NA API
+  try {
+    await finishJourney(jornada.id, {
+      fimExpediente: jornadaFinalBase.fimExpediente,
+      gpsFim: gps,
+      assinatura,
+    });
+  } catch (err) {
+    console.error("Erro ao finalizar jornada na API:", err);
+    // ⚠️ não bloqueia o fluxo — já salvou local
+  }
 
     alert("Jornada encerrada com sucesso!");
 

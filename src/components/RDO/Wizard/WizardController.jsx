@@ -680,7 +680,7 @@ export default function WizardController({
   // };
 
   const onIniciarRetornoBase = async () => {
-    if (jornada.atividadeAtual !== "livre") return;
+    // if (jornada.atividadeAtual !== "livre") return;
 
     const time = nowISO();
     const gps = await getLocation();
@@ -808,7 +808,8 @@ export default function WizardController({
   // };
 
   const marcarChegadaBase = async () => {
-      if (jornada.atividadeAtual !== "livre") return;
+    // console.log("aqui")
+      // if (jornada.atividadeAtual !== "livre") return;
 
     const time = nowISO();
     const gps = await getLocation();
