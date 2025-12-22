@@ -158,8 +158,8 @@ export const menuItems = [
     occupation: [8, 9, 2, 4, 5],
     submenu: [
       {
-        label: "Funcionários",
-        path: "/funcionarios/listar",
+        label: "Colaboradores",
+        path: "/Colaboradores/listar",
         icon: FaUsers,
         occupation: [8, 9, 2, 4, 5, 6],
         // submenu: [

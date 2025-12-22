@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Label, Input, BigBtn } from "../styles/layout";
+import apiMobileJourney from "../../../services/apiMobileJourney";
 
 export default function EditarOsModalRdo({ atendimento, onSave, onClose }) {
   if (!atendimento) return null;
@@ -18,28 +19,88 @@ export default function EditarOsModalRdo({ atendimento, onSave, onClose }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    // mesma lógica de validação do monolito
-    if (isExterno && (!form.prefixo || !/^\d{6}$/.test(form.numero))) {
-      alert("Informe o prefixo e um número com 6 dígitos.");
-      return;
-    }
+  // const handleSave = () => {
+  //   // mesma lógica de validação do monolito
+  //   if (isExterno && (!form.prefixo || !/^\d{6}$/.test(form.numero))) {
+  //     alert("Informe o prefixo e um número com 6 dígitos.");
+  //     return;
+  //   }
 
-    if (isInterno && !/^\d{6}$/.test(form.numero)) {
-      alert("O número da OS deve ter 6 dígitos.");
-      return;
-    }
+  //   if (isInterno && !/^\d{6}$/.test(form.numero)) {
+  //     alert("O número da OS deve ter 6 dígitos.");
+  //     return;
+  //   }
+  //   const atualizado = {
+  //     ...atendimento,
+  //     tipo: form.tipo,
+  //     ordemTipo: isInterno ? "100000" : form.prefixo,
+  //     ordemNumero: form.numero,
+  //     notaEnviada: "sim",
+  //   };
 
-    const atualizado = {
-      ...atendimento,
-      tipo: form.tipo,
-      ordemTipo: isInterno ? "100000" : form.prefixo,
-      ordemNumero: form.numero,
-      notaEnviada: "sim",
-    };
+  //   onSave(atualizado);
+  // };
 
-    onSave(atualizado);
+
+  const handleSave = async () => {
+  // 🔒 validações
+  if (isExterno && (!form.prefixo || !/^\d{6}$/.test(form.numero))) {
+    alert("Informe o prefixo e um número com 6 dígitos.");
+    return;
+  }
+
+  if (isInterno && !/^\d{6}$/.test(form.numero)) {
+    alert("O número da OS deve ter 6 dígitos.");
+    return;
+  }
+
+  // 📦 payload para API
+  const payload = {
+    tipo: form.tipo,
+    ordem_tipo: isInterno ? "100000" : form.prefixo,
+    ordem_numero: form.numero,
   };
+
+  try {
+    const result = await apiMobileJourney.putAttendanceOS(
+      atendimento.id,
+      payload
+    );
+
+    // ✅ API OK
+    if (result.ok) {
+      onSave({
+        ...atendimento,
+        tipo: form.tipo,
+        ordemTipo: payload.ordem_tipo,
+        ordemNumero: payload.ordem_numero,
+        notaEnviada: "sim",
+      });
+
+      onClose();
+      return;
+    }
+
+    // 🔌 OFFLINE
+    if (result.offline) {
+      onSave({
+        ...atendimento,
+        tipo: form.tipo,
+        ordemTipo: payload.ordem_tipo,
+        ordemNumero: payload.ordem_numero,
+        notaEnviada: "sim",
+        sync_status: "pending",
+      });
+
+      alert("Sem conexão. A OS será sincronizada automaticamente.");
+      onClose();
+    }
+  } catch (err) {
+    console.error("Erro ao salvar OS:", err);
+    alert("Erro ao salvar OS. Tente novamente.");
+  }
+};
+
 
   return (
     <div

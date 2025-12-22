@@ -113,14 +113,38 @@
     return mapJourneyFromApi(response.data);
   }
 
+  // async function putAttendanceOS(attendanceId, payload) {
+  //   const response = await api.put(
+  //     `/mobile-attendances/${attendanceId}/os`,
+  //     payload
+  //   );
+  //   return response.data;
+  // }
+
   async function putAttendanceOS(attendanceId, payload) {
-    const response = await api.put(
+  try {
+    const { data } = await api.put(
       `/mobile-attendances/${attendanceId}/os`,
       payload
     );
-    return response.data;
-  }
 
+    return { ok: true, data };
+  } catch (err) {
+    // 🔌 Sem resposta → offline
+    if (!err.response) {
+      queueRequest(
+        `/mobile-attendances/${attendanceId}/os`,
+        "PUT",
+        payload
+      );
+
+      return { ok: false, offline: true };
+    }
+
+    // ❌ Erro real do backend
+    throw err;
+  }
+}
 
   // Step 4: criar atendimento
   async function createAttendance(journeyId, payload) {

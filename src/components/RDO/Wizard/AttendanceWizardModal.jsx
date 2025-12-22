@@ -41,6 +41,8 @@ import FirstPanel from "../panel/FirstPanel";
 import usePanelState from "../panel/usePanelState";
 import { salvarJornada } from "../panel/jornadaStorage";
 import mobileJourneyApi, { finishJourney } from "../../../services/mobileJourneyApi";
+import { queueRequest } from "../../../utils/offlineQueue";
+import { updateLocalJourney } from "../../../utils/journeyStore";
 
 const STORAGE_KEY = "obra_sync_jornada_v1";
 
@@ -593,8 +595,13 @@ const confirmarSuspenderAlmoco = async () => {
     };
 
     // 4️⃣ SALVA IMEDIATAMENTE
-    salvarJornada(jornadaFinal);
+    // salvarJornada(jornadaFinal);
 
+   // 4️⃣Rev SALVA IMEDIATAMENTE
+    salvarJornada({
+  ...jornadaFinal,
+  sync_status: "pending",
+});
 
   // 5️⃣ 🔥 POST/PATCH NA API
   try {
@@ -603,9 +610,25 @@ const confirmarSuspenderAlmoco = async () => {
       gpsFim: gps,
       assinatura,
     });
+
+      updateLocalJourney(jornada.id, {
+    sync_status: "synced",
+    synced_at: new Date().toISOString(),
+  });
+
   } catch (err) {
     console.error("Erro ao finalizar jornada na API:", err);
-    // ⚠️ não bloqueia o fluxo — já salvou local
+
+    // 🔥 NOVO — fila offline
+    queueRequest(
+      `/mobile-journeys/${jornada.id}/finish`,
+      "PATCH",
+      {
+        fimExpediente: jornadaFinalBase.fimExpediente,
+        gpsFim: gps,
+        assinatura,
+      }
+    );
   }
 
     alert("Jornada encerrada com sucesso!");

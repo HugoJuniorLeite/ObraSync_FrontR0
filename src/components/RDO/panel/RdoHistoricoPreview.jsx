@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { fmt } from "../helpers/time";
 import { calcularDistanciaTotal } from "../helpers/distance";
 import EditarOsModal from "./EditarOsModalRdo";
+import { updateLocalJourney } from "../../../utils/journeyStore";
 
 export default function RdoHistoricoPreview({
   panelState,
@@ -73,15 +74,19 @@ export default function RdoHistoricoPreview({
     }
 
     // Atualiza no localStorage (mesmo padrão do monolito)
-    const KEY = "obra_sync_jornadas";
-    const todas = JSON.parse(localStorage.getItem(KEY)) || [];
-    const jIndex = todas.findIndex((j) => j.id === novaJornada.id);
+    // const KEY = "obra_sync_jornadas";
+    // const todas = JSON.parse(localStorage.getItem(KEY)) || [];
+    // const jIndex = todas.findIndex((j) => j.id === novaJornada.id);
+    // if (jIndex !== -1) {
+    //   todas[jIndex] = novaJornada;
+    //   localStorage.setItem(KEY, JSON.stringify(todas));
 
-    if (jIndex !== -1) {
-      todas[jIndex] = novaJornada;
-      localStorage.setItem(KEY, JSON.stringify(todas));
+    // }
 
-    }
+      // ✅ atualização centralizada
+  updateLocalJourney(novaJornada.id, {
+    atendimentos: novaJornada.atendimentos,
+  });
 
     setRdoHistoricoView(novaJornada);
     setEditarOs(null);
@@ -307,7 +312,9 @@ export default function RdoHistoricoPreview({
                     textAlign: "right",
                   }}
                 >
-                  ID: {att.id?.slice(0, 6) || "—"}
+                  {/* ID: {att.id?.slice(0, 6) || "—"} */}
+                    ID: {String(att.id).slice(0, 6)}
+
                 </div>
               </div>
 

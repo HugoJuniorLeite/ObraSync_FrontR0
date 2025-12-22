@@ -14,49 +14,60 @@ export default function PanelHistorico({
   const { historicoDataFiltro, setHistoricoDataFiltro, setSection } =
     panelState;
 
-  const { getAll } = useJourneys();
+  // const { getAll } = useJourneys();
+  const { getAll, loading } = useJourneys();
+
+  if (loading) {
+    return (
+      <div style={{ padding: 12, color: "#94a3b8" }}>
+        Carregando jornadas...
+      </div>
+    );
+  }
+
+
 
   // 🔥 Normaliza QUALQUER formato para ISO SEM HORA
- const normalizarData = (j) => {
-  const norm = (value) => {
-    if (!value) return null;
+  const normalizarData = (j) => {
+    const norm = (value) => {
+      if (!value) return null;
 
-    // Se já é ISO (2025-12-07 ou 2025-12-07T10:25:00Z)
-    if (value.includes("-")) return value;
+      // Se já é ISO (2025-12-07 ou 2025-12-07T10:25:00Z)
+      if (value.includes("-")) return value;
 
-    // Se vier no formato BR "dd/mm/yyyy" -> converte para ISO sem hora
-    if (value.includes("/")) {
-      const [dd, mm, yyyy] = value.split(" ")[0].split("/");
-      const hora = value.split(" ")[1] || "";
-      return `${yyyy}-${mm}-${dd}${hora ? `T${hora}` : ""}`;
-    }
+      // Se vier no formato BR "dd/mm/yyyy" -> converte para ISO sem hora
+      if (value.includes("/")) {
+        const [dd, mm, yyyy] = value.split(" ")[0].split("/");
+        const hora = value.split(" ")[1] || "";
+        return `${yyyy}-${mm}-${dd}${hora ? `T${hora}` : ""}`;
+      }
 
-    return value;
+      return value;
+    };
+
+    return {
+      ...j,
+      date: norm(j.date),
+      inicioExpediente: norm(j.inicioExpediente),
+      fimExpediente: norm(j.fimExpediente),
+    };
   };
-
-  return {
-    ...j,
-    date: norm(j.date),
-    inicioExpediente: norm(j.inicioExpediente),
-    fimExpediente: norm(j.fimExpediente),
-  };
-};
 
 
   // 🔥 Sempre gera yyyy-mm-dd
- const toDateKey = (value) => {
-  if (!value) return "";
+  const toDateKey = (value) => {
+    if (!value) return "";
 
-  const base = value.split("T")[0]; // mantém ISO puro YYYY-MM-DD
+    const base = value.split("T")[0]; // mantém ISO puro YYYY-MM-DD
 
-  // se vier BR
-  if (base.includes("/")) {
-    const [dd, mm, yyyy] = base.split("/");
-    return `${yyyy}-${mm}-${dd}`;
-  }
+    // se vier BR
+    if (base.includes("/")) {
+      const [dd, mm, yyyy] = base.split("/");
+      return `${yyyy}-${mm}-${dd}`;
+    }
 
-  return base; // ISO
-};
+    return base; // ISO
+  };
 
 
   // 🔥 Converte ISO → BR
@@ -66,15 +77,15 @@ export default function PanelHistorico({
     return `${dd}/${mm}/${yyyy}`;
   };
 
- const parseDate = (j) => {
-  const raw = j.inicioExpediente || j.date;
+  const parseDate = (j) => {
+    const raw = j.inicioExpediente || j.date;
 
-  try {
-    return new Date(raw);
-  } catch {
-    return new Date(0);
-  }
-};
+    try {
+      return new Date(raw);
+    } catch {
+      return new Date(0);
+    }
+  };
 
 
   // 🔥 OBRIGATÓRIO: normalizar ANTES de ordenar
@@ -131,6 +142,12 @@ export default function PanelHistorico({
             <div style={{ fontWeight: 700, marginBottom: 6 }}>
               Jornada • {dataBR(j.date)}
             </div>
+
+            {j.sync_status === "pending" && (
+              <div style={{ color: "#f59e0b", fontSize: 12 }}>
+                ⏳ Não sincronizado
+              </div>
+            )}
 
             <div style={{ color: "#9fb4c9", fontSize: ".85rem" }}>
               Início: {fmt(j.inicioExpediente)} <br />

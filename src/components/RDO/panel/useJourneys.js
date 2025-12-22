@@ -1,18 +1,185 @@
+// export function useJourneys() {
+//   const load = () => {
+//     try {
+//       return JSON.parse(localStorage.getItem("obra_sync_jornadas")) || [];
+//     } catch {
+//       return [];
+//     }
+//   };
+
+//   const getAll = () => load();
+
+//   const filterByDate = (date) => {
+//     if (!date) return load();
+//     return load().filter(j => j.date === date);
+//   };
+
+//   return { getAll, filterByDate };
+// }
+
+// //versão nova teste -------------------------
+// import { useEffect, useState } from "react";
+// import { getCurrentJourneyId } from "../../../utils/journeyStore";
+// import apiMobileJourney from "../../../services/apiMobileJourney";
+
+
+// export function useJourneys() {
+//   const [journeys, setJourneys] = useState([]);
+
+//   // 🔥 LOAD LOCAL (fallback)
+//   const loadLocal = () => {
+//     try {
+//       return getCurrentJourneyId();
+//     } catch {
+//       return [];
+//     }
+//   };
+
+//   // 🔥 MERGE DENTRO DO HOOK
+//   const mergeJourneys = (apiJourneys = [], localJourneys = []) => {
+//     const map = new Map();
+
+//     // 1️⃣ local primeiro
+//     localJourneys.forEach((j) => {
+//       map.set(j.id, {
+//         ...j,
+//         source: "local",
+//       });
+//     });
+
+//     // 2️⃣ API sobrescreve
+//     apiJourneys.forEach((j) => {
+//       map.set(j.id, {
+//         ...j,
+//         source: "api",
+//         sync_status: "synced",
+//       });
+//     });
+
+//     return Array.from(map.values());
+//   };
+
+//   // 🔥 LOAD COMPLETO
+//   const load = async () => {
+//     // 1️⃣ mostra local imediatamente
+//     const local = loadLocal();
+//     setJourneys(local);
+
+//     try {
+//       // 2️⃣ busca API
+//       const api = await apiMobileJourney.getMobileJourneys();
+
+//       // 3️⃣ merge
+//       const merged = mergeJourneys(api, local);
+//       setJourneys(merged);
+//     } catch {
+//       // fallback local
+//       setJourneys(local);
+//     }
+//   };
+
+//   useEffect(() => {
+//     load();
+//   }, []);
+
+//   // 🔹 API pública (mantém compatibilidade)
+//   const getAll = () => journeys;
+
+//   const filterByDate = (date) => {
+//     if (!date) return journeys;
+//     return journeys.filter((j) => j.date === date);
+//   };
+
+//   return {
+//     getAll,
+//     filterByDate,
+//     reload: load,
+//   };
+// }
+
+
+// versão 2
+
+//---------------------------------------
+
+import { useEffect, useState } from "react";
+import apiMobileJourney from "../../../services/apiMobileJourney";
+import { loadSavedJourneys } from "../../../services/jornadaStorage";
+// import { useContext } from "react";
+// import { AuthContext } from "../../../contexts/AuthContext";
+
+
+
 export function useJourneys() {
-  const load = () => {
+  const [journeys, setJourneys] = useState([]);
+//  const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
+
+  // 🔹 LOCAL: jornadas salvas offline (sempre array)
+  const loadLocal = () => {
     try {
-      return JSON.parse(localStorage.getItem("obra_sync_jornadas")) || [];
+      return loadSavedJourneys();
     } catch {
       return [];
     }
   };
 
-  const getAll = () => load();
+  // 🔹 MERGE: API tem prioridade
+  const mergeJourneys = (apiJourneys = [], localJourneys = []) => {
+    const map = new Map();
 
-  const filterByDate = (date) => {
-    if (!date) return load();
-    return load().filter(j => j.date === date);
+    // local primeiro
+    localJourneys.forEach((j) => {
+      if (j && j.id) {
+        map.set(j.id, { ...j, source: "local" });
+      }
+    });
+
+    // api sobrescreve
+    apiJourneys.forEach((j) => {
+      if (j && j.id) {
+        map.set(j.id, {
+          ...j,
+          source: "api",
+          sync_status: "synced",
+        });
+      }
+    });
+
+    return Array.from(map.values());
   };
 
-  return { getAll, filterByDate };
+  // 🔹 LOAD PRINCIPAL
+  const load = async () => {
+    const local = loadLocal();
+    setJourneys(local); // UX imediato
+
+    try {
+      // ✅ ENDPOINT CORRETO
+      const apiJourneys = await apiMobileJourney.getMobileJourneys();
+
+      const merged = mergeJourneys(apiJourneys, local);
+      setJourneys(merged);
+    } catch (err) {
+      console.warn("API indisponível, usando jornadas locais");
+      setJourneys(local);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  // 🔹 API PÚBLICA DO HOOK
+  const getAll = () => journeys;
+
+  const filterByDate = (date) => {
+    if (!date) return journeys;
+    return journeys.filter((j) => j.date === date);
+  };
+
+  return {
+    getAll,
+    filterByDate,
+    reload: load,
+  };
 }

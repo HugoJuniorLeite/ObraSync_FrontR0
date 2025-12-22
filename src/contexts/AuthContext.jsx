@@ -5,6 +5,9 @@ import { login as apiLogin, firstLogin, changePassword } from "../services/apiLo
 
 export const AuthContext = createContext();
 
+const TOKEN_KEY = import.meta.env.VITE_AUTH_TOKEN_KEY;
+
+
 // export function AuthProvider({ children }) {
 //   const [user, setUser] = useState(null);
 //   const [token, setToken] = useState(localStorage.getItem("token") || null);
@@ -70,7 +73,7 @@ export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("token") || null);
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true); // 🚨 novo estado
 
   useEffect(() => {
@@ -93,21 +96,23 @@ export function AuthProvider({ children }) {
     const result = await apiLogin({ cpf, password });
     const { token } = result;
 
+        localStorage.setItem(TOKEN_KEY, token);
+    setToken(token);
+
     const decoded = jwtDecode(token);
     const loggedUser = {
       id: decoded.userId,
       occupation: decoded.occupation,
     };
 
-    localStorage.setItem("token", token);
-    setToken(token);
+
     setUser(loggedUser);
 
     return { token, user: loggedUser };
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setToken(null);
   };
