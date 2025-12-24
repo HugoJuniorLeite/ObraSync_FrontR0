@@ -42,7 +42,7 @@ import usePanelState from "../panel/usePanelState";
 import { salvarJornada } from "../panel/jornadaStorage";
 import mobileJourneyApi, { finishJourney } from "../../../services/mobileJourneyApi";
 import { queueRequest } from "../../../utils/offlineQueue";
-import { getCurrentJourneyId, getLunchPatchId, loadDraftJornada, saveDraftJornada, updateLocalJourney } from "../../../utils/journeyStore";
+import { clearCurrentJourneyId, clearDraftJornada, getCurrentJourneyId, getLunchPatchId, loadDraftJornada, saveDraftJornada, updateLocalJourney } from "../../../utils/journeyStore";
 import { readArray, writeArray } from "../../../utils/storageSafe";
 
 // const STORAGE_KEY = "obra_sync_jornada_v1";
@@ -947,86 +947,165 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   //   };
 
 
+  // const encerrarExpediente = async () => {
+  //   // 🔒 1️⃣ GERA EVENTO LOCAL DE ENCERRAMENTO
+  //   const fimExpediente = nowISO();
+  //   const assinatura = sigRef.current?.toDataURL() || null;
+
+  //   let gps = null;
+  //   try {
+  //     gps = await getLocation();
+  //   } catch {
+  //     console.warn("GPS indisponível ao encerrar expediente");
+  //   }
+
+  //   // 🔒 2️⃣ JORNADA FINAL (VERDADE LOCAL)
+  //   const jornadaFinal = {
+  //     ...jornada,
+  //     fimExpediente,
+  //     gpsFimExpediente: gps,
+  //     assinatura,
+  //     sync_status: "pending", // 🔥 padrão offline-first
+  //   };
+
+  //   // 🔒 3️⃣ SALVA LOCAL IMEDIATAMENTE (NUNCA DEPENDE DE BACKEND)
+  //   salvarJornada(jornadaFinal);
+
+  //   // 🔹 4️⃣ BACKEND = SIDE-EFFECT
+  //   const journeyBackendId = getCurrentJourneyId();
+
+  //   if (journeyBackendId) {
+  //     const payload = {
+  //       fimExpediente,
+  //       gpsFim: gps,
+  //       assinatura,
+  //     };
+
+  //     finishJourney(journeyBackendId, payload)
+  //       .then(() => {
+  //         updateLocalJourney(journeyBackendId, {
+  //           sync_status: "synced",
+  //           synced_at: new Date().toISOString(),
+  //         });
+  //       })
+  //       .catch(() => {
+  //         queueRequest(
+  //           `/mobile-journeys/${journeyBackendId}/finish`,
+  //           "PATCH",
+  //           payload
+  //         );
+  //       });
+  //   }
+
+  //   // 🔔 5️⃣ FEEDBACK AO USUÁRIO
+  //   alert("Jornada encerrada com sucesso!");
+
+  //   // 🔒 6️⃣ LIMPA STORAGE APÓS PERSISTÊNCIA LOCAL
+  //   localStorage.removeItem(STORAGE_KEY);
+  //   localStorage.removeItem("wizard_step");
+  //   localStorage.removeItem("wizard_state");
+
+  //   // 🔹 7️⃣ LIMPA UI
+  //   sigRef.current?.clear();
+  //   setSignatureEnabled(false);
+
+  //   // 🔹 8️⃣ INICIA NOVA JORNADA LIMPA
+  //   setJornada({
+  //     id: uuid(),
+  //     date: new Date().toISOString().split("T")[0],
+  //     inicioExpediente: null,
+  //     fimExpediente: null,
+  //     gpsFimExpediente: null,
+  //     atendimentos: [],
+  //     almocos: [],
+  //     atividadeAtual: "livre",
+  //     atividadeAnterior: null,
+  //     baseLogs: [],
+  //     sync_status: "draft",
+  //   });
+
+  //   setWizardStep(0);
+  //   setTab(0);
+  // };
+
+
   const encerrarExpediente = async () => {
-    // 🔒 1️⃣ GERA EVENTO LOCAL DE ENCERRAMENTO
-    const fimExpediente = nowISO();
-    const assinatura = sigRef.current?.toDataURL() || null;
+  const fimExpediente = nowISO();
+  const assinatura = sigRef.current?.toDataURL() || null;
 
-    let gps = null;
-    try {
-      gps = await getLocation();
-    } catch {
-      console.warn("GPS indisponível ao encerrar expediente");
-    }
+  let gps = null;
+  try {
+    gps = await getLocation();
+  } catch {}
 
-    // 🔒 2️⃣ JORNADA FINAL (VERDADE LOCAL)
-    const jornadaFinal = {
-      ...jornada,
+  // 🔒 1️⃣ VERDADE LOCAL
+  const jornadaFinal = {
+    ...jornada,
+    fimExpediente,
+    gpsFimExpediente: gps,
+    assinatura,
+    sync_status: "pending",
+  };
+
+  // 🔒 2️⃣ SALVA LOCAL
+  salvarJornada(jornadaFinal);
+
+  // 🔹 3️⃣ BACKEND = SIDE-EFFECT
+  const journeyBackendId = getCurrentJourneyId();
+
+  if (journeyBackendId) {
+    const payload = {
       fimExpediente,
-      gpsFimExpediente: gps,
+      gpsFim: {
+        lat: gps?.lat ?? null,
+        lng: gps?.lng ?? null,
+      },
       assinatura,
-      sync_status: "pending", // 🔥 padrão offline-first
     };
 
-    // 🔒 3️⃣ SALVA LOCAL IMEDIATAMENTE (NUNCA DEPENDE DE BACKEND)
-    salvarJornada(jornadaFinal);
-
-    // 🔹 4️⃣ BACKEND = SIDE-EFFECT
-    const journeyBackendId = getCurrentJourneyId();
-
-    if (journeyBackendId) {
-      const payload = {
-        fimExpediente,
-        gpsFim: gps,
-        assinatura,
-      };
-
-      finishJourney(journeyBackendId, payload)
-        .then(() => {
-          updateLocalJourney(journeyBackendId, {
-            sync_status: "synced",
-            synced_at: new Date().toISOString(),
-          });
-        })
-        .catch(() => {
-          queueRequest(
-            `/mobile-journeys/${journeyBackendId}/finish`,
-            "PATCH",
-            payload
-          );
+    finishJourney(journeyBackendId, payload)
+      .then(() => {
+        updateLocalJourney(journeyBackendId, {
+          sync_status: "synced",
+          synced_at: new Date().toISOString(),
         });
-    }
+      })
+      .catch(() => {
+        queueRequest(
+          `/mobile-journeys/${journeyBackendId}/finish`,
+          "PATCH",
+          payload
+        );
+      });
+  }
 
-    // 🔔 5️⃣ FEEDBACK AO USUÁRIO
-    alert("Jornada encerrada com sucesso!");
+  alert("Jornada encerrada com sucesso!");
 
-    // 🔒 6️⃣ LIMPA STORAGE APÓS PERSISTÊNCIA LOCAL
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem("wizard_step");
-    localStorage.removeItem("wizard_state");
+  // 🔥 4️⃣ LIMPA FONTES DE VERDADE
+  clearDraftJornada();
+  clearCurrentJourneyId();
 
-    // 🔹 7️⃣ LIMPA UI
-    sigRef.current?.clear();
-    setSignatureEnabled(false);
+  // 🔹 5️⃣ LIMPA UI
+  sigRef.current?.clear();
+  setSignatureEnabled(false);
 
-    // 🔹 8️⃣ INICIA NOVA JORNADA LIMPA
-    setJornada({
-      id: uuid(),
-      date: new Date().toISOString().split("T")[0],
-      inicioExpediente: null,
-      fimExpediente: null,
-      gpsFimExpediente: null,
-      atendimentos: [],
-      almocos: [],
-      atividadeAtual: "livre",
-      atividadeAnterior: null,
-      baseLogs: [],
-      sync_status: "draft",
-    });
+  setJornada({
+    id: uuid(),
+    date: new Date().toISOString().split("T")[0],
+    inicioExpediente: null,
+    fimExpediente: null,
+    gpsFimExpediente: null,
+    atendimentos: [],
+    almocos: [],
+    atividadeAtual: "livre",
+    atividadeAnterior: null,
+    baseLogs: [],
+    sync_status: "draft",
+  });
 
-    setWizardStep(0);
-    setTab(0);
-  };
+  setWizardStep(0);
+  setTab(0);
+};
 
 
   // const encerrarExpediente = async () => {

@@ -7,7 +7,7 @@ import { getLocation } from "../helpers/location";
 
 
 // import apiMobileJourney from "../../../services/mobileJourneyApi";
-import { getAttendancePatchId, getBaseLogPatchId, getCurrentJourneyId, saveCurrentJourneyId } from "../../../utils/journeyStore";
+import { getAttendancePatchId, getBaseLogPatchId, getCurrentJourneyId, saveCurrentJourneyId, saveDraftJornada } from "../../../utils/journeyStore";
 
 import {
   Field,
@@ -220,58 +220,121 @@ export default function WizardController({
   // };
 
 
+  // const iniciarJornada = async () => {
+  //   try {
+  //     const inicio = nowISO();
+  //     const hoje = inicio.split("T")[0]; // YYYY-MM-DD
+
+  //     // 1️⃣ GPS imediato (caso disponível)
+  //     const gps = await getLocation();
+
+  //     // 2️⃣ Identificar o técnico logado
+  //     // ⚠️ Ajuste essa linha conforme sua auth real!
+  //     // const employeeId =
+  //     //   jornada.employee_id ||
+  //     //   jornada.employeeId ||
+  //     //   JSON.parse(localStorage.getItem("user"))?.id || 
+  //     //   1; // fallback provisório
+  //     const employeeId = user?.id;
+
+  //     if (!employeeId) {
+  //       alert("Erro: usuário não identificado.");
+  //       return;
+  //     }
+
+
+
+  //     // 3️⃣ Chamar backend para criar a jornada
+  //     const created = await mobileJourneyApi.startJourney({
+  //       employeeId,
+  //       date: hoje,
+  //       inicioExpediente: inicio,
+  //       gpsInicio: gps ?? null,
+  //     });
+
+  //     // 4️⃣ Guardar ID da jornada atual
+  //     saveCurrentJourneyId(created.id);
+
+  //     // 5️⃣ Atualizar estado local da jornada
+  //     setJornada((p) => ({
+  //       ...p,
+  //       id: created.id,
+  //       employee_id: employeeId,
+  //       date: hoje,
+  //       inicioExpediente: inicio,
+  //       gpsInicioExpediente: gps ?? null,
+  //     }));
+
+  //     // 6️⃣ Avançar para o próximo step
+  //     next();
+  //   } catch (err) {
+  //     console.error("Erro ao iniciar jornada:", err);
+  //     alert("Falha ao iniciar a jornada. Verifique conexão.");
+  //   }
+  // };
+
+
   const iniciarJornada = async () => {
+  try {
+    const inicio = nowISO();
+    const hoje = inicio.split("T")[0];
+
+    let gps = null;
     try {
-      const inicio = nowISO();
-      const hoje = inicio.split("T")[0]; // YYYY-MM-DD
+      gps = await getLocation();
+    } catch {}
 
-      // 1️⃣ GPS imediato (caso disponível)
-      const gps = await getLocation();
-
-      // 2️⃣ Identificar o técnico logado
-      // ⚠️ Ajuste essa linha conforme sua auth real!
-      // const employeeId =
-      //   jornada.employee_id ||
-      //   jornada.employeeId ||
-      //   JSON.parse(localStorage.getItem("user"))?.id || 
-      //   1; // fallback provisório
-      const employeeId = user?.id;
-
-      if (!employeeId) {
-        alert("Erro: usuário não identificado.");
-        return;
-      }
-
-
-
-      // 3️⃣ Chamar backend para criar a jornada
-      const created = await mobileJourneyApi.startJourney({
-        employeeId,
-        date: hoje,
-        inicioExpediente: inicio,
-        gpsInicio: gps ?? null,
-      });
-
-      // 4️⃣ Guardar ID da jornada atual
-      saveCurrentJourneyId(created.id);
-
-      // 5️⃣ Atualizar estado local da jornada
-      setJornada((p) => ({
-        ...p,
-        id: created.id,
-        employee_id: employeeId,
-        date: hoje,
-        inicioExpediente: inicio,
-        gpsInicioExpediente: gps ?? null,
-      }));
-
-      // 6️⃣ Avançar para o próximo step
-      next();
-    } catch (err) {
-      console.error("Erro ao iniciar jornada:", err);
-      alert("Falha ao iniciar a jornada. Verifique conexão.");
+    const employeeId = user?.id;
+    if (!employeeId) {
+      alert("Erro: usuário não identificado.");
+      return;
     }
-  };
+
+    // 🔹 1️⃣ Backend
+    const created = await mobileJourneyApi.startJourney({
+      employeeId,
+      date: hoje,
+      inicioExpediente: inicio,
+      gpsInicio: gps ?? null,
+    });
+
+    // 🔹 2️⃣ Salva ID do backend
+    saveCurrentJourneyId(created.id);
+
+    // 🔥 3️⃣ CRIA DRAFT (FONTE DA VERDADE)
+    saveDraftJornada({
+      id: created.id,
+      employee_id: employeeId,
+      date: hoje,
+      inicioExpediente: inicio,
+      gpsInicioExpediente: gps ?? null,
+
+      atendimentos: [],
+      almocos: [],
+      baseLogs: [],
+
+      atividadeAtual: "livre",
+      atividadeAnterior: null,
+      activeLunchId: null,
+    });
+
+    // 🔹 4️⃣ Atualiza estado React
+    setJornada((p) => ({
+      ...p,
+      id: created.id,
+      employee_id: employeeId,
+      date: hoje,
+      inicioExpediente: inicio,
+      gpsInicioExpediente: gps ?? null,
+    }));
+
+    next();
+  } catch (err) {
+    console.error("Erro ao iniciar jornada:", err);
+    alert("Falha ao iniciar a jornada. Verifique conexão.");
+  }
+};
+
 
   // const iniciarDeslocamento = () => {
   //   const deslocamentoInicio = nowISO();
@@ -1542,7 +1605,7 @@ const iniciarAtendimento = async () => {
 
   const baseLogLocalId = crypto.randomUUID();
 
-  // 🔒 ESTADO LOCAL PRIMEIRO
+  // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
   setJornada((j) => ({
     ...j,
     atividadeAtual: "retornoBase",
@@ -1555,33 +1618,49 @@ const iniciarAtendimento = async () => {
         time,
         gps,
         finalizado: false,
+        sync_status: "pending",
       },
     ],
   }));
 
-  // 🔹 Backend = side-effect
-  const patchId = getBaseLogPatchId(jornada, baseLogLocalId);
+  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+  const journeyBackendId = getCurrentJourneyId();
+  if (!journeyBackendId) return;
 
-  if (patchId) {
-    const payload = {
-      tipo: "deslocamentoParaBase",
-      time,
-      lat: gps?.lat ?? null,
-      lng: gps?.lng ?? null,
-      local_id: baseLogLocalId,
-    };
+  const payload = {
+    tipo: "deslocamentoParaBase",
+    time,
+    lat: gps?.lat ?? null,
+    lng: gps?.lng ?? null,
+    local_id: baseLogLocalId, // 🔑 chave de reconciliação
+  };
 
-    mobileJourneyApi
-      .addBaseLog(patchId, payload)
-      .catch(() => {
-        queueRequest(
-          `/mobile-base-logs/${patchId}`,
-          "POST",
-          payload
-        );
-      });
-  }
+  mobileJourneyApi
+    .addBaseLog(journeyBackendId, payload)
+    .then((resp) => {
+      const backendId = resp?.id;
+      if (!backendId) return;
+
+      // 🔥 reconcilia backendId
+      setJornada((j) => ({
+        ...j,
+        baseLogs: j.baseLogs.map((b) =>
+          b.id === baseLogLocalId
+            ? { ...b, backendId, sync_status: "synced" }
+            : b
+        ),
+      }));
+    })
+    .catch(() => {
+      // 🔥 offline → fila
+      queueRequest(
+        `/mobile-journeys/${journeyBackendId}/base-logs`,
+        "POST",
+        payload
+      );
+    });
 };
+
 
   //------------------------------------
   //MARCAR CHEGADA A BASE
@@ -1758,7 +1837,7 @@ const iniciarAtendimento = async () => {
     setStep(goToStep);
   };
 
-  const marcarChegadaBase = async () => {
+const marcarChegadaBase = async () => {
   const time = nowISO();
 
   let gps = null;
@@ -1770,7 +1849,7 @@ const iniciarAtendimento = async () => {
 
   const baseLogLocalId = crypto.randomUUID();
 
-  // 🔒 ESTADO LOCAL PRIMEIRO
+  // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
   setJornada((j) => ({
     ...j,
     atividadeAtual: "livre",
@@ -1782,38 +1861,52 @@ const iniciarAtendimento = async () => {
         tipo: "chegadaBase",
         time,
         gps,
+        sync_status: "pending",
       },
     ],
   }));
 
-  // 🔹 Backend = side-effect
-  const patchId = getBaseLogPatchId(jornada, baseLogLocalId);
+  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+  const journeyBackendId = getCurrentJourneyId();
+  if (!journeyBackendId) return;
 
-  if (patchId) {
-    const payload = {
-      tipo: "chegadaBase",
-      time,
-      lat: gps?.lat ?? null,
-      lng: gps?.lng ?? null,
-      local_id: baseLogLocalId,
-    };
+  const payload = {
+    tipo: "chegadaBase",
+    time,
+    lat: gps?.lat ?? null,
+    lng: gps?.lng ?? null,
+    local_id: baseLogLocalId, // 🔑 reconciliação
+  };
 
-    mobileJourneyApi
-      .addBaseLog(patchId, payload)
-      .catch(() => {
-        queueRequest(
-          `/mobile-base-logs/${patchId}`,
-          "POST",
-          payload
-        );
-      });
-  }
+  mobileJourneyApi
+    .addBaseLog(journeyBackendId, payload)
+    .then((resp) => {
+      const backendId = resp?.id;
+      if (!backendId) return;
+
+      // 🔥 reconcilia backendId
+      setJornada((j) => ({
+        ...j,
+        baseLogs: j.baseLogs.map((b) =>
+          b.id === baseLogLocalId
+            ? { ...b, backendId, sync_status: "synced" }
+            : b
+        ),
+      }));
+    })
+    .catch(() => {
+      // 🔥 offline → fila
+      queueRequest(
+        `/mobile-journeys/${journeyBackendId}/base-logs`,
+        "POST",
+        payload
+      );
+    });
 
   window.dispatchEvent(
     new CustomEvent("start-new-atendimento")
   );
 };
-
   //-------------------------------------------------------------
   // INTERROMPER DESLOCAMENTO PARA BASE
   //-------------------------------------------------------------
@@ -1859,7 +1952,7 @@ const iniciarAtendimento = async () => {
   // };
 
 
-  const confirmarInterromperRetorno = async (motivo) => {
+const confirmarInterromperRetorno = async (motivo) => {
   const time = nowISO();
 
   let gps = null;
@@ -1884,33 +1977,48 @@ const iniciarAtendimento = async () => {
         time,
         gps,
         motivo,
+        sync_status: "pending",
       },
     ],
   }));
 
-  // 🔹 2️⃣ Backend = side-effect
-  const patchId = getBaseLogPatchId(jornada, baseLogLocalId);
+  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+  const journeyBackendId = getCurrentJourneyId();
+  if (!journeyBackendId) return;
 
-  if (patchId) {
-    const payload = {
-      tipo: "retornoInterrompido",
-      time,
-      lat: gps?.lat ?? null,
-      lng: gps?.lng ?? null,
-      motivo,
-      local_id: baseLogLocalId,
-    };
+  const payload = {
+    tipo: "retornoInterrompido",
+    time,
+    lat: gps?.lat ?? null,
+    lng: gps?.lng ?? null,
+    motivo,
+    local_id: baseLogLocalId, // 🔑 reconciliação
+  };
 
-    mobileJourneyApi
-      .addBaseLog(patchId, payload)
-      .catch(() => {
-        queueRequest(
-          `/mobile-base-logs/${patchId}`,
-          "POST",
-          payload
-        );
-      });
-  }
+  mobileJourneyApi
+    .addBaseLog(journeyBackendId, payload)
+    .then((resp) => {
+      const backendId = resp?.id;
+      if (!backendId) return;
+
+      // 🔥 reconcilia backendId
+      setJornada((j) => ({
+        ...j,
+        baseLogs: j.baseLogs.map((b) =>
+          b.id === baseLogLocalId
+            ? { ...b, backendId, sync_status: "synced" }
+            : b
+        ),
+      }));
+    })
+    .catch(() => {
+      // 🔥 offline → fila
+      queueRequest(
+        `/mobile-journeys/${journeyBackendId}/base-logs`,
+        "POST",
+        payload
+      );
+    });
 
   // 🔹 3️⃣ Libera novo atendimento
   window.dispatchEvent(
