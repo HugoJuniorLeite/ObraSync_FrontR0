@@ -89,9 +89,16 @@ export default function PanelHistorico({
 
 
   // 🔥 OBRIGATÓRIO: normalizar ANTES de ordenar
-  const jornadas = getAll()
-    .map(normalizarData)
-    .sort((a, b) => parseDate(b) - parseDate(a));
+  // const jornadas = getAll()
+  //   .map(normalizarData)
+  //   .sort((a, b) => parseDate(b) - parseDate(a));
+
+  const jornadas = Array.isArray(getAll())
+  ? getAll()
+      .map(normalizarData)
+      .sort((a, b) => parseDate(b) - parseDate(a))
+  : [];
+
 
   const filtroISO = toDateKey(historicoDataFiltro);
 

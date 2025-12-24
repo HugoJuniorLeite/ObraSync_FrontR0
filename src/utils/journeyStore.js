@@ -1,5 +1,7 @@
 // import { loadSavedJourneys, saveJourneysArray } from "../services/jornadaStorage";
 
+import { readArray } from "./storageSafe";
+
 // const KEY = "current_journey_id";
 
 
@@ -102,13 +104,20 @@ export const clearDraftJornada = () => {
  */
 
 export const loadSavedJourneys = () => {
-  try {
-    const raw = localStorage.getItem(SAVED_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
+  // try {
+  //   const raw = localStorage.getItem(SAVED_KEY);
+
+    // return raw ? JSON.parse(raw) : [];
+
+    //         const parsed = raw ? JSON.parse(raw) : [];
+//     return Array.isArray(parsed) ? parsed : [];    
+//   } catch {
+//     return [];
+//   }
+// };
+
+  return readArray("atendimentos_v3");
+}
 
 export const saveJourneysArray = (arr) => {
   try {
@@ -170,3 +179,61 @@ export const getCurrentJourneyId = () => {
 export const clearCurrentJourneyId = () => {
   localStorage.removeItem(CURRENT_ID_KEY);
 };
+
+
+// utils/journeyStore.js
+
+export const getAttendancePatchId = (jornada, attendanceId) => {
+  if (!jornada || !attendanceId) return null;
+
+  const atendimento = jornada.atendimentos?.find(
+    (a) => a.id === attendanceId
+  );
+
+  if (!atendimento) return null;
+
+  // 🔥 prioridade para backendId, fallback para local id
+  return atendimento.backendId || atendimento.id;
+};
+
+export const getBaseLogPatchId = (jornada, baseLogId) => {
+  if (!jornada || !baseLogId) return null;
+
+  const log = jornada.baseLogs?.find(
+    (b) => b.id === baseLogId
+  );
+
+  if (!log) return null;
+
+  // 🔥 prioridade para backendId, fallback para local id
+  return log.backendId || log.id;
+};
+
+
+export const getLunchPatchId = (jornada, lunchId) => {
+  if (!lunchId) return null;
+
+  // 1️⃣ tenta no estado React
+  const almocoMemoria = jornada?.almocos?.find(
+    (a) => a.id === lunchId
+  );
+
+  if (almocoMemoria?.backendId) {
+    return almocoMemoria.backendId;
+  }
+
+  // 2️⃣ fonte da verdade: DRAFT
+  const draft = loadDraftJornada();
+
+  const almocoDraft = draft?.almocos?.find(
+    (a) => a.id === lunchId
+  );
+
+  if (almocoDraft?.backendId) {
+    return almocoDraft.backendId;
+  }
+
+  // 3️⃣ fallback: UUID local (fila)
+  return lunchId;
+};
+

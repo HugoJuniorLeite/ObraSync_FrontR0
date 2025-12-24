@@ -102,41 +102,156 @@
 
 //---------------------------------------
 
+// import { useEffect, useState } from "react";
+// import apiMobileJourney from "../../../services/apiMobileJourney";
+// import { loadSavedJourneys } from "../../../services/jornadaStorage";
+// // import { useContext } from "react";
+// // import { AuthContext } from "../../../contexts/AuthContext";
+
+
+
+// export function useJourneys() {
+//   const [journeys, setJourneys] = useState([]);
+// //  const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
+
+//   // 🔹 LOCAL: jornadas salvas offline (sempre array)
+//   // const loadLocal = () => {
+//   //   try {
+//   //     return loadSavedJourneys();
+//   //   } catch {
+//   //     return [];
+//   //   }
+//   // };
+
+//   const loadLocal = () => {
+//   try {
+//     const data = loadSavedJourneys();
+//     return Array.isArray(data) ? data : [];
+//   } catch {
+//     return [];
+//   }
+// };
+
+//   // 🔹 MERGE: API tem prioridade
+//   // const mergeJourneys = (apiJourneys = [], localJourneys = []) => {
+//   //   const map = new Map();
+
+//   //   // local primeiro
+//   //   localJourneys.forEach((j) => {
+//   //     if (j && j.id) {
+//   //       map.set(j.id, { ...j, source: "local" });
+//   //     }
+//   //   });
+
+//   //   // api sobrescreve
+//   //   apiJourneys.forEach((j) => {
+//   //     if (j && j.id) {
+//   //       map.set(j.id, {
+//   //         ...j,
+//   //         source: "api",
+//   //         sync_status: "synced",
+//   //       });
+//   //     }
+//   //   });
+
+//   //   return Array.from(map.values());
+//   // };
+
+//   const mergeJourneys = (apiJourneys = [], localJourneys = []) => {
+//   const localArr = Array.isArray(localJourneys) ? localJourneys : [];
+//   const apiArr = Array.isArray(apiJourneys) ? apiJourneys : [];
+
+//   const map = new Map();
+
+//   localArr.forEach((j) => {
+//     if (j?.id) map.set(j.id, { ...j, source: "local" });
+//   });
+
+//   apiArr.forEach((j) => {
+//     if (j?.id) {
+//       map.set(j.id, {
+//         ...j,
+//         source: "api",
+//         sync_status: "synced",
+//       });
+//     }
+//   });
+
+//   return Array.from(map.values());
+// };
+
+
+//   // 🔹 LOAD PRINCIPAL
+//   const load = async () => {
+//     const local = loadLocal();
+//     setJourneys(local); // UX imediato
+
+//     try {
+//       // ✅ ENDPOINT CORRETO
+//       const apiJourneys = await apiMobileJourney.getMobileJourneys();
+
+//       const merged = mergeJourneys(apiJourneys, local);
+//       setJourneys(merged);
+//     } catch (err) {
+//       console.warn("API indisponível, usando jornadas locais");
+//       setJourneys(local);
+//     }
+//   };
+
+//   useEffect(() => {
+//     load();
+//   }, []);
+
+//   // 🔹 API PÚBLICA DO HOOK
+//   // const getAll = () => journeys;
+//   const getAll = () => (Array.isArray(journeys) ? journeys : []);
+
+
+//   const filterByDate = (date) => {
+//     if (!date) return journeys;
+//     return journeys.filter((j) => j.date === date);
+//   };
+
+//   return {
+//     getAll,
+//     filterByDate,
+//     reload: load,
+//   };
+// }
+
+
+
+
+
+//--------------------------------------------------------------------
+//versão 3
+//--------------------------------------------------------------------
+
+
 import { useEffect, useState } from "react";
 import apiMobileJourney from "../../../services/apiMobileJourney";
-import { loadSavedJourneys } from "../../../services/jornadaStorage";
-// import { useContext } from "react";
-// import { AuthContext } from "../../../contexts/AuthContext";
+import { readArray } from "../../../utils/storageSafe";
 
 
+
+const JOURNEYS_KEY = "atendimentos_v3";
 
 export function useJourneys() {
   const [journeys, setJourneys] = useState([]);
-//  const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
+  const [loading, setLoading] = useState(true);
 
-  // 🔹 LOCAL: jornadas salvas offline (sempre array)
-  const loadLocal = () => {
-    try {
-      return loadSavedJourneys();
-    } catch {
-      return [];
-    }
-  };
+  // 🔹 fonte única do offline
+  const loadLocal = () => readArray(JOURNEYS_KEY);
 
-  // 🔹 MERGE: API tem prioridade
   const mergeJourneys = (apiJourneys = [], localJourneys = []) => {
     const map = new Map();
 
-    // local primeiro
     localJourneys.forEach((j) => {
-      if (j && j.id) {
-        map.set(j.id, { ...j, source: "local" });
-      }
+      if (j?.id) map.set(j.id, { ...j, source: "local" });
     });
 
-    // api sobrescreve
     apiJourneys.forEach((j) => {
-      if (j && j.id) {
+      if (j?.id) {
         map.set(j.id, {
           ...j,
           source: "api",
@@ -148,20 +263,18 @@ export function useJourneys() {
     return Array.from(map.values());
   };
 
-  // 🔹 LOAD PRINCIPAL
   const load = async () => {
     const local = loadLocal();
-    setJourneys(local); // UX imediato
+    setJourneys(local);     // UX imediato
+    setLoading(true);
 
     try {
-      // ✅ ENDPOINT CORRETO
       const apiJourneys = await apiMobileJourney.getMobileJourneys();
-
-      const merged = mergeJourneys(apiJourneys, local);
-      setJourneys(merged);
-    } catch (err) {
-      console.warn("API indisponível, usando jornadas locais");
-      setJourneys(local);
+      setJourneys(mergeJourneys(apiJourneys, local));
+    } catch {
+      setJourneys(local);  // fallback offline
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,17 +282,9 @@ export function useJourneys() {
     load();
   }, []);
 
-  // 🔹 API PÚBLICA DO HOOK
-  const getAll = () => journeys;
-
-  const filterByDate = (date) => {
-    if (!date) return journeys;
-    return journeys.filter((j) => j.date === date);
-  };
-
   return {
-    getAll,
-    filterByDate,
+    getAll: () => journeys,
+    loading,
     reload: load,
   };
 }
