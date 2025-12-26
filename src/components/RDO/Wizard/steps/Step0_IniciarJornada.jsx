@@ -8,6 +8,7 @@ export default function Step0_IniciarJornada({
   Card,
   BigBtn,
   iniciarJornada,
+  loadingJornada,
 }) {
   return (
     <motion.div
@@ -29,8 +30,10 @@ export default function Step0_IniciarJornada({
             Ao iniciar a jornada, o sistema registrará data, hora e localização.
           </div>
 
-          <BigBtn $primary onClick={iniciarJornada}>
-            <Check size={18} /> Iniciar Jornada de Trabalho
+          <BigBtn $primary onClick={iniciarJornada}   disabled={loadingJornada}
+>
+            <Check size={18} />   {loadingJornada ? "Iniciando..." : "Iniciar Jornada"}
+
           </BigBtn>
         </Card>
       </Field>

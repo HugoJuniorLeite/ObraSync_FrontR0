@@ -39,7 +39,7 @@ import UnderConstruction from "../pages/UnderConstruction";
 import EmployeeList from "../components/EmployeeList";
 import OccupationList from "../components/OccupationList";
 import GasistaPage from "../pages/RDO/GasistaPage";
-import AttendanceWizardModal from "../components/RdoForms/AttendanceWizardModal";
+// import AttendanceWizardModal from "../components/RdoForms/AttendanceWizardModal";
 // import RdoMain from "../components/RDO/GasitaOperacoes/RdoMain";
 // import GasistaPage from "../pages/Rdo/GasistaPage";
 

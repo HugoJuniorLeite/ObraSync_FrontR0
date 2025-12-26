@@ -42,7 +42,7 @@ export default function RdoHistoricoPreview({
     );
   }
 
-  const distanceKm = (calcularDistanciaTotal(jornada) / 1000).toFixed(2);
+  const distanceKm = (calcularDistanciaTotal(jornada) || 0 / 1000).toFixed(2);
   const totalAtend = jornada.atendimentos?.length || 0;
 
   const handleClose = () => {

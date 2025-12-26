@@ -4,29 +4,6 @@ import { ChevronRight } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import polyline from "@mapbox/polyline";
 
-// 🔥 Mira vermelha no destino
-// function Crosshair() {
-//   return (
-//     <div
-//       style={{
-//         position: "absolute",
-//         top: "50%",
-//         left: "50%",
-//         width: 20,
-//         height: 20,
-//         marginLeft: -10,
-//         marginTop: -10,
-//         pointerEvents: "none",
-//         zIndex: 999,
-//       }}
-//     >
-//       <svg width="20" height="20">
-//         <line x1="10" y1="0" x2="10" y2="20" stroke="#ff3333" strokeWidth="2" />
-//         <line x1="0" y1="10" x2="20" y2="10" stroke="#ff3333" strokeWidth="2" />
-//       </svg>
-//     </div>
-//   );
-// }
 
 export default function Step5_DeslocamentoAtivo({
   Field,
@@ -129,20 +106,8 @@ export default function Step5_DeslocamentoAtivo({
                     />
                   )}
 
-                  {/* Linha reta (opcional) */}
-                  {/* {gpsAtual && destinoCoords.lat && (
-                    <Polyline
-                      positions={[
-                        [gpsAtual.lat, gpsAtual.lng],
-                        [destinoCoords.lat, destinoCoords.lng],
-                      ]}
-                      pathOptions={{ color: "cyan", dashArray: "8 6", weight: 2 }}
-                    />
-                  )} */}
                 </MapContainer>
 
-                {/* Mira no destino */}
-                {/* {destinoCoords.lat && <Crosshair />} */}
               </>
             ) : (
               <div

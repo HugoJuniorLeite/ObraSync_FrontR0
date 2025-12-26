@@ -19,29 +19,8 @@ export default function EditarOsModalRdo({ atendimento, onSave, onClose }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // const handleSave = () => {
-  //   // mesma lógica de validação do monolito
-  //   if (isExterno && (!form.prefixo || !/^\d{6}$/.test(form.numero))) {
-  //     alert("Informe o prefixo e um número com 6 dígitos.");
-  //     return;
-  //   }
 
-  //   if (isInterno && !/^\d{6}$/.test(form.numero)) {
-  //     alert("O número da OS deve ter 6 dígitos.");
-  //     return;
-  //   }
-  //   const atualizado = {
-  //     ...atendimento,
-  //     tipo: form.tipo,
-  //     ordemTipo: isInterno ? "100000" : form.prefixo,
-  //     ordemNumero: form.numero,
-  //     notaEnviada: "sim",
-  //   };
-
-  //   onSave(atualizado);
-  // };
-
-
+  
   const handleSave = async () => {
   // 🔒 validações
   if (isExterno && (!form.prefixo || !/^\d{6}$/.test(form.numero))) {

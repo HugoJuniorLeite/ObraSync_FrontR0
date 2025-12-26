@@ -2,59 +2,6 @@
 
 import { readArray } from "./storageSafe";
 
-// const KEY = "current_journey_id";
-
-
-// //--- trecho novo ---------------------
-
-// const JOURNEYS_KEY = "jornadas_finalizadas";
-
-// export function getLocalJourneys() {
-//   try {
-//     return JSON.parse(localStorage.getItem(JOURNEYS_KEY)) || [];
-//   } catch {
-//     return [];
-//   }
-// }
-
-// // src/services/jornadaStorage.js
-
-// export const updateLocalJourney = (id, patch) => {
-//   try {
-//     const list = loadSavedJourneys();
-
-//     const updated = list.map((j) =>
-//       j.id === id ? { ...j, ...patch } : j
-//     );
-
-//     saveJourneysArray(updated);
-//   } catch (e) {
-//     console.warn("Erro ao atualizar jornada local:", e);
-//   }
-// };
-
-// //-----------------fim do trecho --------
-
-
-// export function saveLocalJourneys(list) {
-//   localStorage.setItem(JOURNEYS_KEY, JSON.stringify(list));
-// }
-
-
-// export function saveCurrentJourneyId(id) {
-//   localStorage.setItem(KEY, String(id));
-// }
-
-// export function getCurrentJourneyId() {
-//   const v = localStorage.getItem(KEY);
-//   return v ? Number(v) : null;
-// }
-
-// export function clearCurrentJourneyId() {
-//   localStorage.removeItem(KEY);
-// }
-
-
 /**
  * =====================================================
  * CHAVES DE STORAGE
@@ -104,17 +51,6 @@ export const clearDraftJornada = () => {
  */
 
 export const loadSavedJourneys = () => {
-  // try {
-  //   const raw = localStorage.getItem(SAVED_KEY);
-
-    // return raw ? JSON.parse(raw) : [];
-
-    //         const parsed = raw ? JSON.parse(raw) : [];
-//     return Array.isArray(parsed) ? parsed : [];    
-//   } catch {
-//     return [];
-//   }
-// };
 
   return readArray("atendimentos_v3");
 }

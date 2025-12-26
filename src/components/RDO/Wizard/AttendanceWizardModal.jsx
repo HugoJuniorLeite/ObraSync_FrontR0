@@ -25,8 +25,6 @@ import RdoMain from "../timeline/RdoMain";
 import Timeline from "../timeline/Timeline";
 
 import RdoPreview from "../preview/RdoPreview";
-// import JourneyMap from "../mapa/JourneyMap";
-// import BasePanel from "../base/BasePanel";
 
 import { exportJornadaAsPdf } from "../export/exportPDF";
 
@@ -44,6 +42,7 @@ import mobileJourneyApi, { finishJourney } from "../../../services/mobileJourney
 import { queueRequest } from "../../../utils/offlineQueue";
 import { clearCurrentJourneyId, clearDraftJornada, getCurrentJourneyId, getLunchPatchId, loadDraftJornada, saveDraftJornada, updateLocalJourney } from "../../../utils/journeyStore";
 import { readArray, writeArray } from "../../../utils/storageSafe";
+import { acquireActionLock, releaseActionLock } from "../../../utils/actionLock";
 
 // const STORAGE_KEY = "obra_sync_jornada_v1";
 const STORAGE_KEY = "atendimentos_v3";
@@ -96,6 +95,9 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   };
 
   const [jornada, setJornada] = useState(loadJornada);
+  const [loadingEncerrar, setLoadingEncerrar] = useState(false);
+
+  
 
   // Salvar jornada quando mudar
   useEffect(() => {
@@ -129,8 +131,8 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     let done = 0;
 
     if (jornada.inicioExpediente) done++;
-    if (jornada.atendimentos.length > 0) done++;
-    if (jornada.almocos.length > 0) done++;
+    if ((jornada.atendimentos?.length ?? 0) > 0) done++;
+    if ((jornada.almocos?.length ?? 0) > 0) done++;
     if (jornada.fimExpediente) done++;
 
     return (done / total) * 100;
@@ -157,93 +159,6 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   //-----------------------------------------------------------------
   //INICIAR ALMOCO
   //---------------------------------------------------------------=
-
-  // const iniciarAlmoco = async () => {
-  //   const inicio = nowISO();
-  //   const gps = await getLocation();
-
-  //   // 1) Atualiza jornada imediatamente (sem depender do GPS ainda)
-  //   setJornada((p) => ({
-  //     ...p,
-  //     almocos: [
-  //       ...p.almocos,
-  //       {
-  //         id: uuid(),
-  //         inicio,
-  //         fim: null,
-  //         latInicio: null,
-  //         lngInicio: null,
-  //         suspensoEm: null,
-  //         solicitanteSuspensao: null,
-  //         justificativaSuspensao: null,
-  //       },
-  //     ],
-  //     atividadeAnterior: p.atividadeAtual,
-  //     atividadeAtual: "pausadoParaAlmoco",
-  //   }));
-
-  //   await mobileJourneyApi.addLunch(jornada.id, {
-  //     inicio,
-  //     lat_inicio: gps?.lat ?? null,
-  //     lng_inicio: gps?.lng ?? null,
-  //   });
-
-  //   // 2) Dispara evento para o Wizard pausar
-  //   window.dispatchEvent(
-  //     new CustomEvent("pause-for-lunch", { detail: { stepBefore: wizardStep } })
-  //   );
-
-  //   // // 3) GPS em background
-  //   // getLocation().then((gps) => {
-  //   //   if (!gps) return;
-  //   //   setJornada((p) => {
-  //   //     const almocos = [...p.almocos];
-  //   //     const idx = almocos.length - 1;
-  //   //     if (idx >= 0) {
-  //   //       almocos[idx] = {
-  //   //         ...almocos[idx],
-  //   //         latInicio: gps.lat,
-  //   //         lngInicio: gps.lng,
-  //   //       };
-  //   //     }
-  //   //     return { ...p, almocos };
-  //   //   });
-  //   // });
-  // };
-
-  //   const iniciarAlmoco = async () => {
-  //   const inicio = nowISO();
-  //   const gps = await getLocation();
-
-  //   const created = await mobileJourneyApi.addLunch(jornada.id, {
-  //     inicio,
-  //     lat_inicio: gps?.lat,
-  //     lng_inicio: gps?.lng,
-  //   });
-
-  //   setJornada((p) => ({
-  //     ...p,
-  //     almocos: [
-  //       ...p.almocos,
-  //       {
-  //         id: created.id, // ✅ ID REAL DO BANCO
-  //         inicio,
-  //         fim: null,
-  //         latInicio: gps?.lat ?? null,
-  //         lngInicio: gps?.lng ?? null,
-  //       },
-  //     ],
-  //     activeLunchId: created.id, // 🔥 ESSENCIAL
-  //     atividadeAnterior: p.atividadeAtual,
-  //     atividadeAtual: "pausadoParaAlmoco",
-  //   }));
-
-  //   window.dispatchEvent(
-  //     new CustomEvent("pause-for-lunch", { detail: { stepBefore: wizardStep } })
-  //   );
-  // };
-
-
   const iniciarAlmoco = async () => {
     const inicio = nowISO();
 
@@ -389,88 +304,6 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     finalizarAlmoco();
   };
 
-  // const finalizarAlmoco = async () => {
-  //   const fim = nowISO();
-  //   const gps = await getLocation();
-
-
-  //   // 1) Atualiza jornada rapidamente
-  //   setJornada((p) => {
-  //     const almocos = [...p.almocos];
-  //     const idx = almocos.length - 1;
-
-  //     if (idx >= 0) {
-  //       const almocoAntigo = almocos[idx];
-  //       almocos[idx] = {
-  //         ...almocoAntigo,
-  //         fim,
-  //       };
-  //     }
-
-  //     return {
-  //       ...p,
-  //       almocos,
-  //       atividadeAtual: p.atividadeAnterior || "livre",
-  //       atividadeAnterior: null,
-  //     };
-  //   });
-
-  //   await mobileJourneyApi.finishLunch(jornada.id, {
-  //     fim,
-  //     lat_fim: gps?.lat ?? null,
-  //     lng_fim: gps?.lng ?? null,
-  //   });
-
-
-  //   // 2) Notifica que almoço acabou
-  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
-
-  //   // 3) GPS em background (latFim / lngFim)
-  //   // getLocation().then((gps) => {
-  //   //   if (!gps) return;
-  //   //   setJornada((p) => {
-  //   //     const almocos = [...p.almocos];
-  //   //     const idx = almocos.length - 1;
-  //   //     if (idx >= 0) {
-  //   //       const almocoAntigo = almocos[idx];
-  //   //       almocos[idx] = {
-  //   //         ...almocoAntigo,
-  //   //         latFim: gps.lat ?? almocoAntigo.latFim ?? null,
-  //   //         lngFim: gps.lng ?? almocoAntigo.lngFim ?? null,
-  //   //       };
-  //   //     }
-  //   //     return { ...p, almocos };
-  //   //   });
-  //   // });
-  // };
-
-  //   const finalizarAlmoco = async () => {
-  //   const fim = nowISO();
-  //   const gps = await getLocation();
-  //   const lunchId = jornada.activeLunchId;
-
-  //   if (!lunchId) return;
-
-  //   await mobileJourneyApi.finishLunch(lunchId, {
-  //     fim,
-  //     lat_fim: gps?.lat,
-  //     lng_fim: gps?.lng,
-  //   });
-
-  //   setJornada((p) => ({
-  //     ...p,
-  //     almocos: p.almocos.map((a) =>
-  //       a.id === lunchId ? { ...a, fim } : a
-  //     ),
-  //     activeLunchId: null,
-  //     atividadeAtual: p.atividadeAnterior || "livre",
-  //     atividadeAnterior: null,
-  //   }));
-
-  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
-  // };
-
-
   const finalizarAlmocoEarly = async () => {
     setShowEarlyFinishModal(false);
     await finalizarAlmoco();
@@ -549,88 +382,11 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   //SUSPENDER ALMOÇO
   //---------------------------------------------------------------
 
-  // const confirmarSuspenderAlmoco = async () => {
-  //   const agora = nowISO();
-  //   const gps = await getLocation();
-
-
-  //   setJornada((p) => {
-  //     const almocos = [...p.almocos];
-  //     const idx = almocos.length - 1;
-
-  //     if (idx >= 0) {
-  //       almocos[idx].suspensoEm = agora;
-  //       almocos[idx].justificativaSuspensao = motivoSuspensao;
-  //       almocos[idx].solicitanteSuspensao = solicitante;
-  //     }
-
-  //     return {
-  //       ...p,
-  //       almocos,
-  //       atividadeAtual: p.atividadeAnterior || "livre",
-  //       atividadeAnterior: null,
-  //     };
-  //   });
-
-  //   await mobileJourneyApi.suspendLunch(jornada.id, {
-  //     suspenso_em: agora,
-  //     lat_suspenso: gps?.lat ?? null,
-  //     lng_suspenso: gps?.lng ?? null,
-  //     justificativa_suspensao: motivoSuspensao,
-  //     solicitante_suspensao: solicitante,
-  //   });
-
-
-  //   setMotivoSuspensao("");
-  //   setSolicitante("");
-  //   setShowSuspenderModal(false);
-
-  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
-  // };
-
   const confirmarPausaParaAlmoco = () => {
     iniciarAlmoco();
     setShowPausarParaAlmocoModal(false);
   };
 
-  // const confirmarSuspenderAlmoco = async () => {
-  //   const agora = nowISO();
-  //   const gps = await getLocation();
-  //   const lunchId = jornada.activeLunchId;
-
-  //   if (!lunchId) return;
-
-  //   await mobileJourneyApi.suspendLunch(lunchId, {
-  //     suspenso_em: agora,
-  //     lat_suspenso: gps?.lat,
-  //     lng_suspenso: gps?.lng,
-  //     justificativa_suspensao: motivoSuspensao,
-  //     solicitante_suspensao: solicitante,
-  //   });
-
-  //   setJornada((p) => ({
-  //     ...p,
-  //     almocos: p.almocos.map((a) =>
-  //       a.id === lunchId
-  //         ? {
-  //             ...a,
-  //             suspensoEm: agora,
-  //             justificativaSuspensao: motivoSuspensao,
-  //             solicitanteSuspensao: solicitante,
-  //           }
-  //         : a
-  //     ),
-  //     activeLunchId: null,
-  //     atividadeAtual: p.atividadeAnterior || "livre",
-  //     atividadeAnterior: null,
-  //   }));
-
-  //   setMotivoSuspensao("");
-  //   setSolicitante("");
-  //   setShowSuspenderModal(false);
-
-  //   window.dispatchEvent(new CustomEvent("lunch-finished"));
-  // };
   const confirmarSuspenderAlmoco = async () => {
     const agora = nowISO();
 
@@ -688,24 +444,24 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
       lunch.backendId,
       payload
     )
-    .then(() => {
-    setJornada((j) => ({
-      ...j,
-      almocos: j.almocos.map((a) =>
-        a.id === lunchId
-          ? { ...a, sync_status: "synced" }
-          : a
-      ),
-    }));
-  })
+      .then(() => {
+        setJornada((j) => ({
+          ...j,
+          almocos: j.almocos.map((a) =>
+            a.id === lunchId
+              ? { ...a, sync_status: "synced" }
+              : a
+          ),
+        }));
+      })
       .catch(() => {
-      // 🔥 offline / erro → fila
-      queueRequest(
-        `/mobile-lunches/${lunch.backendId}/suspend`,
-        "PATCH",
-        payload
-      );
-    });
+        // 🔥 offline / erro → fila
+        queueRequest(
+          `/mobile-lunches/${lunch.backendId}/suspend`,
+          "PATCH",
+          payload
+        );
+      });
 
     setMotivoSuspensao("");
     setSolicitante("");
@@ -715,345 +471,50 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   };
 
 
-  // // ---- Retorno à base ----
-  // const onIniciarRetornoBase = () => {
-  //   const time = nowISO();
-
-  //   // 1) Marca retorno base rápido
-  //   setJornada((p) => ({
-  //     ...p,
-  //     atividadeAtual: "retornoBase",
-  //     baseLogs: [
-  //       ...p.baseLogs,
-  //       {
-  //         id: uuid(),
-  //         tipo: "deslocamentoParaBase",
-  //         time,
-  //         gps: null,
-  //         finalizado: false,
-  //       },
-  //     ],
-  //   }));
-
-  //   // 2) GPS depois
-  //   getLocation().then((gps) => {
-  //     if (!gps) return;
-  //     setJornada((p) => {
-  //       const logs = [...p.baseLogs];
-  //       const idx = logs.findIndex(
-  //         (l) =>
-  //           l.tipo === "deslocamentoParaBase" &&
-  //           l.time === time &&
-  //           !l.finalizado
-  //       );
-  //       if (idx !== -1) {
-  //         logs[idx] = { ...logs[idx], gps };
-  //       }
-  //       return { ...p, baseLogs: logs };
-  //     });
-  //   });
-  // };
-
-
-
-  // const onConfirmarChegadaBase = () => {
-  //   if (jornada.atividadeAtual === "pausadoParaAlmoco") {
-  //     alert("Finalize o almoço antes de retornar.");
-  //     return;
-  //   }
-
-  //   const time = nowISO();
-
-  //   // 1) Atualiza estado imediatamente
-  //   setJornada((p) => {
-  //     const logs = [...p.baseLogs];
-  //     const idx = logs.findIndex(
-  //       (l) => l.tipo === "deslocamentoParaBase" && !l.finalizado
-  //     );
-  //     if (idx !== -1) logs[idx].finalizado = true;
-
-  //     logs.push({
-  //       id: uuid(),
-  //       tipo: "chegadaBase",
-  //       time,
-  //       gps: null,
-  //     });
-
-  //     return { ...p, baseLogs: logs };
-  //   });
-
-  //   window.dispatchEvent(new CustomEvent("start-new-atendimento"));
-  //   setWizardStep(1);
-  //   setTab(0);
-
-  //   // 2) GPS em background
-  //   getLocation().then((gps) => {
-  //     if (!gps) return;
-  //     setJornada((p) => {
-  //       const logs = [...p.baseLogs];
-  //       const idx = logs.findIndex(
-  //         (l) => l.tipo === "chegadaBase" && l.time === time
-  //       );
-  //       if (idx !== -1) {
-  //         logs[idx] = { ...logs[idx], gps };
-  //       }
-  //       return { ...p, baseLogs: logs };
-  //     });
-  //   });
-  // };
-
-  // Encerrar expediente (rápido)
-  // const encerrarExpediente = () => {
-  //   // 1 — captura assinatura antes de qualquer coisa
-  //   const assinatura = sigRef.current?.toDataURL();
-
-  //   // 2 — monta jornada final sem depender do GPS ainda
-  //   const jornadaFinalBase = {
-  //     ...jornada,
-  //     fimExpediente: nowISO(),
-  //     id: uuid(),
-  //     assinatura: assinatura || null,
-  //   };
-
-  //   // 3 — salva jornada com os dados que já temos
-  //   salvarJornada(jornadaFinalBase);
-
-  //   // 4 — limpa localStorage
-  //   localStorage.removeItem(STORAGE_KEY);
-  //   localStorage.removeItem("wizard_step");
-  //   localStorage.removeItem("wizard_state");
-
-  //   // 5 — limpa assinatura visual
-  //   sigRef.current?.clear();
-  //   setSignatureEnabled(false);
-
-  //   // 6 — reseta estados da aplicação
-  //   setWizardStep(0);
-  //   setTab(0);
-  //   setJornada({
-  //     id: uuid(),
-  //     // date: new Date().toLocaleDateString("pt-BR"),
-  //     date: new Date().toISOString().split("T")[0],
-  //     inicioExpediente: null,
-  //     fimExpediente: null,
-  //     atendimentos: [],
-  //     almocos: [],
-  //     atividadeAtual: "livre",
-  //     atividadeAnterior: null,
-  //     baseLogs: [],
-  //   });
-
-  //   alert("Jornada encerrada com sucesso!");
-
-  //   // 7 — pega GPS em background e atualiza jornada salva
-  //   getLocation().then((gps) => {
-  //     const jornadaComGps = {
-  //       ...jornadaFinalBase,
-  //       gpsFimExpediente: gps || null,
-  //     };
-  //     salvarJornada(jornadaComGps);
-  //   });
-  // };
-
-
-  //   const encerrarExpediente = async () => {
-  //     const assinatura = sigRef.current?.toDataURL();
-
-  //     // 1️⃣ monta jornada final SEM LIMPAR NADA AINDA
-  //     const jornadaFinalBase = {
-  //       ...jornada,
-  //       fimExpediente: nowISO(),
-  //       assinatura: assinatura || null,
-  //     };
-
-  //     // 2️⃣ pega GPS (pode demorar, mas não tem problema!)
-  //     let gps = null;
-  //     try {
-  //       gps = await getLocation();
-  //     } catch { }
-
-  //     // 3️⃣ gera versão final
-  //     const jornadaFinal = {
-  //       ...jornadaFinalBase,
-  //       gpsFimExpediente: gps || null,
-  //     };
-
-  //     // 4️⃣ SALVA IMEDIATAMENTE
-  //     // salvarJornada(jornadaFinal);
-
-  //    // 4️⃣Rev SALVA IMEDIATAMENTE
-  //     salvarJornada({
-  //   ...jornadaFinal,
-  //   sync_status: "pending",
-  // });
-
-  //   // 5️⃣ 🔥 POST/PATCH NA API
-  //   try {
-  //         const backendId = getCurrentJourneyId();
-
-  //     await finishJourney(backendId, {
-  //       fimExpediente: jornadaFinalBase.fimExpediente,
-  //       gpsFim: gps,
-  //       assinatura,
-  //     });
-
-  //       updateLocalJourney(backendId, {
-  //     sync_status: "synced",
-  //     synced_at: new Date().toISOString(),
-  //   });
-
-  //   } catch (err) {
-  //     console.error("Erro ao finalizar jornada na API:", err);
-  //     const backendId = getCurrentJourneyId();
-
-  //     // 🔥 NOVO — fila offline
-  //     queueRequest(
-  //       `/mobile-journeys/${backendId}/finish`,
-  //       "PATCH",
-  //       {
-  //         fimExpediente: jornadaFinalBase.fimExpediente,
-  //         gpsFim: gps,
-  //         assinatura,
-  //       }
-  //     );
-  //   }
-
-  //     alert("Jornada encerrada com sucesso!");
-
-  //     // 5️⃣ AGORA sim limpa storages — DEPOIS de salvar
-  //     localStorage.removeItem(STORAGE_KEY);
-  //     localStorage.removeItem("wizard_step");
-  //     localStorage.removeItem("wizard_state");
-
-  //     // 6️⃣ limpa UI
-  //     sigRef.current?.clear();
-  //     setSignatureEnabled(false);
-
-  //     // 7️⃣ gera nova jornada limpa
-  //     setJornada({
-  //       id: uuid(),
-  //       date: new Date().toISOString().split("T")[0],
-  //       inicioExpediente: null,
-  //       fimExpediente: null,
-  //       atendimentos: [],
-  //       almocos: [],
-  //       atividadeAtual: "livre",
-  //       atividadeAnterior: null,
-  //       baseLogs: [],
-  //     });
-
-  //     setWizardStep(0);
-  //     setTab(0);
-  //   };
-
-
-  // const encerrarExpediente = async () => {
-  //   // 🔒 1️⃣ GERA EVENTO LOCAL DE ENCERRAMENTO
-  //   const fimExpediente = nowISO();
-  //   const assinatura = sigRef.current?.toDataURL() || null;
-
-  //   let gps = null;
-  //   try {
-  //     gps = await getLocation();
-  //   } catch {
-  //     console.warn("GPS indisponível ao encerrar expediente");
-  //   }
-
-  //   // 🔒 2️⃣ JORNADA FINAL (VERDADE LOCAL)
-  //   const jornadaFinal = {
-  //     ...jornada,
-  //     fimExpediente,
-  //     gpsFimExpediente: gps,
-  //     assinatura,
-  //     sync_status: "pending", // 🔥 padrão offline-first
-  //   };
-
-  //   // 🔒 3️⃣ SALVA LOCAL IMEDIATAMENTE (NUNCA DEPENDE DE BACKEND)
-  //   salvarJornada(jornadaFinal);
-
-  //   // 🔹 4️⃣ BACKEND = SIDE-EFFECT
-  //   const journeyBackendId = getCurrentJourneyId();
-
-  //   if (journeyBackendId) {
-  //     const payload = {
-  //       fimExpediente,
-  //       gpsFim: gps,
-  //       assinatura,
-  //     };
-
-  //     finishJourney(journeyBackendId, payload)
-  //       .then(() => {
-  //         updateLocalJourney(journeyBackendId, {
-  //           sync_status: "synced",
-  //           synced_at: new Date().toISOString(),
-  //         });
-  //       })
-  //       .catch(() => {
-  //         queueRequest(
-  //           `/mobile-journeys/${journeyBackendId}/finish`,
-  //           "PATCH",
-  //           payload
-  //         );
-  //       });
-  //   }
-
-  //   // 🔔 5️⃣ FEEDBACK AO USUÁRIO
-  //   alert("Jornada encerrada com sucesso!");
-
-  //   // 🔒 6️⃣ LIMPA STORAGE APÓS PERSISTÊNCIA LOCAL
-  //   localStorage.removeItem(STORAGE_KEY);
-  //   localStorage.removeItem("wizard_step");
-  //   localStorage.removeItem("wizard_state");
-
-  //   // 🔹 7️⃣ LIMPA UI
-  //   sigRef.current?.clear();
-  //   setSignatureEnabled(false);
-
-  //   // 🔹 8️⃣ INICIA NOVA JORNADA LIMPA
-  //   setJornada({
-  //     id: uuid(),
-  //     date: new Date().toISOString().split("T")[0],
-  //     inicioExpediente: null,
-  //     fimExpediente: null,
-  //     gpsFimExpediente: null,
-  //     atendimentos: [],
-  //     almocos: [],
-  //     atividadeAtual: "livre",
-  //     atividadeAnterior: null,
-  //     baseLogs: [],
-  //     sync_status: "draft",
-  //   });
-
-  //   setWizardStep(0);
-  //   setTab(0);
-  // };
-
+  // // ---- ENCERRAR EXPEDIENTE ----
 
   const encerrarExpediente = async () => {
-  const fimExpediente = nowISO();
-  const assinatura = sigRef.current?.toDataURL() || null;
+  if (loadingEncerrar) return;
 
-  let gps = null;
+  const lockKey = "encerrar_jornada";
+  if (!acquireActionLock(lockKey)) {
+    console.warn("🚫 Encerramento já em andamento");
+    return;
+  }
+
+  setLoadingEncerrar(true);
+
   try {
-    gps = await getLocation();
-  } catch {}
+    const journeyBackendId = getCurrentJourneyId();
 
-  // 🔒 1️⃣ VERDADE LOCAL
-  const jornadaFinal = {
-    ...jornada,
-    fimExpediente,
-    gpsFimExpediente: gps,
-    assinatura,
-    sync_status: "pending",
-  };
+    if (!journeyBackendId) {
+      alert("Nenhuma jornada ativa para encerrar");
+      return;
+    }
 
-  // 🔒 2️⃣ SALVA LOCAL
-  salvarJornada(jornadaFinal);
+    const fimExpediente = nowISO();
+    const assinatura = sigRef.current?.toDataURL() || null;
 
-  // 🔹 3️⃣ BACKEND = SIDE-EFFECT
-  const journeyBackendId = getCurrentJourneyId();
+    // 🔹 GPS best-effort
+    let gps = null;
+    try {
+      gps = await getLocation();
+    } catch {}
 
-  if (journeyBackendId) {
+    // 🔒 1️⃣ VERDADE LOCAL
+    const jornadaFinal = {
+      ...jornada,
+      fimExpediente,
+      gpsFimExpediente: gps,
+      assinatura,
+      status: "encerrada",
+      atividadeAtual: "encerrada",
+      sync_status: "pending",
+    };
+
+    salvarJornada(jornadaFinal);
+
+    // 🔹 2️⃣ BACKEND = SIDE-EFFECT
     const payload = {
       fimExpediente,
       gpsFim: {
@@ -1077,83 +538,44 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
           payload
         );
       });
+
+    alert("Jornada encerrada com sucesso!");
+
+    // 🔥 3️⃣ RESET DA SESSÃO
+    clearDraftJornada();
+    clearCurrentJourneyId();
+
+    // 🔓 libera lock da jornada anterior
+    releaseActionLock("iniciar_jornada");
+
+    // 🔹 4️⃣ RESET UI
+    sigRef.current?.clear();
+    setSignatureEnabled(false);
+
+    setJornada({
+      id: uuid(),
+      date: new Date().toISOString().split("T")[0],
+      inicioExpediente: null,
+      fimExpediente: null,
+      gpsFimExpediente: null,
+      atendimentos: [],
+      almocos: [],
+      atividadeAtual: "livre",
+      atividadeAnterior: null,
+      baseLogs: [],
+      sync_status: "draft",
+    });
+
+    setWizardStep(0);
+    setTab(0);
+  } catch (err) {
+    console.error("Erro ao encerrar expediente:", err);
+    alert("Erro ao encerrar jornada. Tente novamente.");
+  } finally {
+    setLoadingEncerrar(false);
+    releaseActionLock(lockKey); // 🔓 ÚNICO ponto de liberação
   }
-
-  alert("Jornada encerrada com sucesso!");
-
-  // 🔥 4️⃣ LIMPA FONTES DE VERDADE
-  clearDraftJornada();
-  clearCurrentJourneyId();
-
-  // 🔹 5️⃣ LIMPA UI
-  sigRef.current?.clear();
-  setSignatureEnabled(false);
-
-  setJornada({
-    id: uuid(),
-    date: new Date().toISOString().split("T")[0],
-    inicioExpediente: null,
-    fimExpediente: null,
-    gpsFimExpediente: null,
-    atendimentos: [],
-    almocos: [],
-    atividadeAtual: "livre",
-    atividadeAnterior: null,
-    baseLogs: [],
-    sync_status: "draft",
-  });
-
-  setWizardStep(0);
-  setTab(0);
 };
-
-
-  // const encerrarExpediente = async () => {
-  //   const assinatura = sigRef.current?.toDataURL();
-
-  //   const fimExpediente = nowISO();
-
-  //   // 1️⃣ Atualiza jornada (NÃO LIMPA!)
-  //   setJornada((j) => ({
-  //     ...j,
-  //     fimExpediente,
-  //     assinatura: assinatura || null,
-  //   }));
-
-  //   // 2️⃣ Salva local (offline-first)
-  //   salvarJornada({
-  //     ...jornada,
-  //     fimExpediente,
-  //     assinatura,
-  //     sync_status: "pending",
-  //   });
-
-  //   // 3️⃣ Backend
-  //   try {
-  //     const backendId = getCurrentJourneyId();
-
-  //     if (backendId) {
-  //       await finishJourney(backendId, {
-  //         fimExpediente,
-  //         assinatura,
-  //       });
-
-  //       updateLocalJourney(jornada.id, {
-  //         sync_status: "synced",
-  //         synced_at: new Date().toISOString(),
-  //       });
-  //     }
-  //   } catch (err) {
-  //     queueRequest(
-  //       `/mobile-journeys/${getCurrentJourneyId()}/finish`,
-  //       "PATCH",
-  //       { fimExpediente, assinatura }
-  //     );
-  //   }
-
-  //   alert("Jornada encerrada com sucesso!");
-  // };
-
 
 
   const ultimoAlmoco =
