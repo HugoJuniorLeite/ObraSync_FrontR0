@@ -1,0 +1,2 @@
+// src/config/ors.js
+export const ORS_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijg1YmVhZGZmNmVkMTNiMDJjZjUwZjBhYWJjMGY0MTAyYjVmMzllMjliYjRiN2UxZTE5YjRkNWIxIiwiaCI6Im11cm11cjY0In0";

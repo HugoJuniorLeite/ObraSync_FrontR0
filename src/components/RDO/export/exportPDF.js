@@ -9,8 +9,8 @@ import {
 
 export const exportRdoPreviewPdf = async ({
   jornada,
-  signatureEnabled,
-  generateBlackSignature,
+  signatureEnabled =false,
+  generateBlackSignature =null,
 }) => {
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -54,29 +54,67 @@ export const exportRdoPreviewPdf = async ({
   pdf.line(margin, y, 555, y);
   y += 20;
 
-  pdf.setFont("Helvetica", "bold");
-  pdf.setFontSize(14);
-  pdf.text("Pausas para almoço", margin, y);
-  y += 20;
+pdf.setFont("Helvetica", "bold");
+pdf.setFontSize(14);
+pdf.text("Pausas para almoço", margin, y);
+y += 16;
 
+const almocos = jornada.almocos || [];
+
+if (almocos.length === 0) {
   pdf.setFont("Helvetica", "normal");
   pdf.setFontSize(12);
+  pdf.text("Nenhuma pausa registrada.", margin, y);
+  y += 20;
+} else {
+  const tableBody = almocos.map((alm, index) => {
+    const fimEfetivo = alm.suspensoEm || alm.fim || null;
 
-  const alm = jornada.almoco;
-  if (!alm || (!alm.inicio && !alm.fim)) {
-    pdf.text("Nenhuma pausa registrada.", margin, y);
-    y += 20;
-  } else {
-    if (alm.inicio) {
-      pdf.text(`Início: ${fmt(alm.inicio)}`, margin, y);
-      y += 16;
-    }
-    if (alm.fim) {
-      pdf.text(`Fim: ${fmt(alm.fim)}`, margin, y);
-      y += 16;
-    }
-  }
+    return [
+      index + 1,
+      alm.inicio ? fmt(alm.inicio) : "—",
+      fimEfetivo ? fmt(fimEfetivo) : "Em andamento",
+      alm.suspensoEm ? "Suspenso" : "Normal",
+      alm.justificativaSuspensao || "—",
+      alm.solicitanteSuspensao || "—",
+    ];
+  });
 
+  autoTable(pdf, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [[
+      "Nº",
+      "Início",
+      "Fim",
+      "Status",
+      "Motivo",
+      "Solicitante",
+    ]],
+    body: tableBody,
+    styles: {
+      fontSize: 10,
+      cellPadding: 6,
+      valign: "middle",
+    },
+    headStyles: {
+      fillColor: [30, 60, 110],
+      textColor: 255,
+      fontStyle: "bold",
+    },
+    alternateRowStyles: {
+      fillColor: [245, 247, 250],
+    },
+    columnStyles: {
+      0: { cellWidth: 30, halign: "center" },
+      3: { halign: "center" },
+    },
+  });
+
+  y = pdf.lastAutoTable.finalY + 20;
+}
+
+  
   pdf.line(margin, y, 555, y);
   y += 20;
 
@@ -116,7 +154,7 @@ export const exportRdoPreviewPdf = async ({
   pdf.text("Assinatura do Técnico", margin, y);
   y += 20;
 
-  if (!signatureEnabled) {
+  if (!signatureEnabled  || !generateBlackSignature) {
     pdf.text("Não assinada.", margin, y);
   } else {
     const assinatura = await generateBlackSignature();

@@ -14,6 +14,7 @@ import SignatureBlock from "./SignatureBlock";
 const RdoPreview = ({
   jornada,
   sigRef,
+  signatureEnabled,
   onConfirmEncerrarJornada,
 }) => {
   // 🔒 REGRA ÚNICA DE VERDADE
@@ -67,8 +68,10 @@ console.log(jornada, "jornada RDO preview")
   const handleExportPdf = () =>
     exportRdoPreviewPdf({
       jornada,
-      signatureEnabled,
-      generateBlackSignature,
+      signatureEnabled: !!signatureEnabled,
+      generateBlackSignature: signatureEnabled
+         ? generateBlackSignature
+      : null,
     });
 
   return (

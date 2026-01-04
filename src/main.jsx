@@ -1,13 +1,27 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
+
 import { registerSW } from "./registerSW";
+import { forceResetSW } from "./utils/forceResetSW";
 
 
-registerSW();
+// ==============================
+// 🔎 VERIFICA RESET VIA URL
+// ==============================
+const params = new URLSearchParams(window.location.search);
 
+if (params.has("reset-sw")) {
+  // 🚨 RESET TOTAL DE CACHE + SW
+  forceResetSW();
+} else {
+  // ✅ REGISTRO NORMAL DO SERVICE WORKER
+  registerSW();
+}
 
-// 🔹 escuta mensagens do Service Worker
+// ==============================
+// 🔹 ESCUTA EVENTOS DO SW (offline-first)
+// ==============================
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data?.type === "PROCESS_QUEUE") {
@@ -18,6 +32,10 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+
+// ==============================
+// 🚀 BOOTSTRAP REACT
+// ==============================
 createRoot(document.getElementById('root')).render(
   <StrictMode>
       <App />

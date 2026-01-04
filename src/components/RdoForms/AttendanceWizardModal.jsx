@@ -206,7 +206,7 @@
 
 //   /* ===== helpers para criar atendimento ===== */
 //   const criarAtendimentoVazio = () => ({
-//     id: crypto.randomUUID(),
+//     id: generateUUID(),
 //     tipo: "externo", // externo | interno
 //     ordemTipo: "3", // para externo
 //     ordemPrefixo: "100000", // para interno/prefixo exibido
@@ -342,7 +342,7 @@
 //     const loc = await getLocation();
 //     setJornada(j => {
 //       const copy = { ...j };
-//       copy.baseLogs = [...copy.baseLogs, { id: crypto.randomUUID(), tipo: "deslocamentoParaBase", time: nowISO(), gps: { lat: loc?.lat || "", lng: loc?.lng || "" } }];
+//       copy.baseLogs = [...copy.baseLogs, { id: generateUUID(), tipo: "deslocamentoParaBase", time: nowISO(), gps: { lat: loc?.lat || "", lng: loc?.lng || "" } }];
 //       setMode("retornoDeslocamento");
 //       return copy;
 //     });
@@ -353,7 +353,7 @@
 //     const loc = await getLocation();
 //     setJornada(j => {
 //       const copy = { ...j };
-//       copy.baseLogs = [...copy.baseLogs, { id: crypto.randomUUID(), tipo: "chegadaBase", time: nowISO(), gps: { lat: loc?.lat || "", lng: loc?.lng || "" } }];
+//       copy.baseLogs = [...copy.baseLogs, { id: generateUUID(), tipo: "chegadaBase", time: nowISO(), gps: { lat: loc?.lat || "", lng: loc?.lng || "" } }];
 //       setMode("idle");
 //       setCurrentAtendimentoIndex(null);
 //       return copy;
@@ -412,7 +412,7 @@
 
 //   const confirmarEncerrarJornada = () => {
 //     const assinatura = sigRef.current?.toDataURL();
-//     const registro = { ...jornada, assinatura, id: crypto.randomUUID() };
+//     const registro = { ...jornada, assinatura, id: generateUUID() };
 //     const arr = [...saved, registro];
 //     setSaved(arr);
 //     localStorage.setItem(SAVED, JSON.stringify(arr));
@@ -1164,6 +1164,7 @@ import {
 import SignatureCanvas from "react-signature-canvas";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { generateUUID } from "../RDO/helpers/uuid";
 
 /* ================== STYLES ================== */
 const Overlay = styled.div`
@@ -1489,7 +1490,7 @@ export default function AttendanceWizardModal({ onClose }) {
 
   /* ========== Helpers: criar novo atendimento e inicia fluxo ========== */
   const newAtendimentoTemplate = (tipo = "externo") => ({
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     tipo,
     pausadoParaAlmoco: false,
     stepAntesAlmoco: null,
@@ -1810,7 +1811,7 @@ export default function AttendanceWizardModal({ onClose }) {
       baseLogs: [
         ...(j.baseLogs || []),
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           tipo: "deslocamentoParaBase",
           time: nowISO(),
           gps: { lat: loc?.lat || "", lng: loc?.lng || "" },
@@ -1834,7 +1835,7 @@ export default function AttendanceWizardModal({ onClose }) {
       baseLogs: [
         ...(j.baseLogs || []),
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           tipo: "chegadaBase",
           time: nowISO(),
           gps: { lat: loc?.lat || "", lng: loc?.lng || "" },
@@ -1868,7 +1869,7 @@ export default function AttendanceWizardModal({ onClose }) {
       baseLogs: [
         ...(j.baseLogs || []),
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           tipo: "interrompeuRetorno",
           time: nowISO(),
           motivo: interromperReasonText,
@@ -4014,7 +4015,7 @@ export default function AttendanceWizardModal({ onClose }) {
     const registro = {
       ...jornada,
       assinatura,
-      id: crypto.randomUUID(),
+      id: generateUUID(),
     };
 
     const arr = [...savedJourneys, registro];
@@ -4056,7 +4057,7 @@ export default function AttendanceWizardModal({ onClose }) {
       almocos: [
         ...j.almocos,
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           inicio: nowISO(),
           fim: "",
           latInicio: loc?.lat || "",

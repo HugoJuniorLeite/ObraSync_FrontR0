@@ -1,35 +1,48 @@
+import { geocodeNominatim } from "./geocodeNominatim";
+
+// 🔥 PRIORIDADE: CEP > ENDEREÇO
 export async function geocodeEndereco(endereco) {
   try {
     if (!endereco) return null;
 
-    const query = `${endereco.rua || ""} ${endereco.numero || ""}, 
-                   ${endereco.bairro || ""}, 
-                   ${endereco.cidade || ""}, 
-                   ${endereco.uf || "SP"}`;
+    // 🔹 1️⃣ Normalização
+    const rua = endereco.rua || endereco.logradouro || "";
+    const numero = endereco.numero || "";
+    const bairro = endereco.bairro || "";
+    const cidade = endereco.cidade || endereco.localidade || "";
+    const uf = endereco.uf || endereco.estado || "SP";
+    const cep = endereco.cep?.replace(/\D/g, "");
 
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      query
-    )}`;
+    // 🔹 2️⃣ Se tiver CEP → ViaCEP primeiro (mais preciso)
+    if (cep && cep.length === 8) {
+      const viaCepResp = await fetch(
+        `https://viacep.com.br/ws/${cep}/json/`
+      );
+      const viaCep = await viaCepResp.json();
 
-    const resp = await fetch(url, {
-      headers: {
-        "User-Agent": "ObraSync/1.0",
-      },
-    });
-
-    const json = await resp.json();
-
-    if (!json || json.length === 0) {
-      console.warn("⚠️ Nominatim não encontrou o endereço:", query);
-      return null;
+      if (!viaCep.erro) {
+        return await geocodeNominatim({
+          rua: viaCep.logradouro,
+          numero,
+          bairro: viaCep.bairro,
+          cidade: viaCep.localidade,
+          uf: viaCep.uf,
+        });
+      }
     }
 
-    return {
-      lat: parseFloat(json[0].lat),
-      lng: parseFloat(json[0].lon),
-    };
-  } catch (err) {
-    console.error("❌ Erro geocodeEndereco:", err);
+    // 🔹 3️⃣ Fallback → endereço manual
+    if (!rua && !cidade) return null;
+
+    return await geocodeNominatim({
+      rua,
+      numero,
+      bairro,
+      cidade,
+      uf,
+    });
+  } catch (e) {
+    console.error("Erro geocodeEndereco:", e);
     return null;
   }
 }

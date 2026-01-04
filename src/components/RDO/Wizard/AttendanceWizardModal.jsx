@@ -1,5 +1,5 @@
 // AttendanceWizardModal.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   Overlay,
   Panel,
@@ -17,7 +17,6 @@ import {
 
 import { nowISO } from "../helpers/time";
 import { getLocation } from "../helpers/location";
-import { uuid } from "../helpers/uuid";
 
 import WizardController from "../Wizard/WizardController";
 
@@ -33,7 +32,7 @@ import ModalFinalizarAlmocoEarly from "../almoco/ModalFinalizarAlmocoEarly";
 import ModalSuspenderAlmoco from "../almoco/ModalSuspenderAlmoco";
 import ModalPausarParaAlmoco from "../almoco/ModalPausarParaAlmoco";
 
-import { Clock, List, FileText, BarChart2 } from "lucide-react";
+import { Clock, List, FileText, BarChart2, LogOut } from "lucide-react";
 
 import FirstPanel from "../panel/FirstPanel";
 import usePanelState from "../panel/usePanelState";
@@ -43,6 +42,9 @@ import { queueRequest } from "../../../utils/offlineQueue";
 import { clearCurrentJourneyId, clearDraftJornada, getCurrentJourneyId, getLunchPatchId, loadDraftJornada, saveDraftJornada, updateLocalJourney } from "../../../utils/journeyStore";
 import { readArray, writeArray } from "../../../utils/storageSafe";
 import { acquireActionLock, releaseActionLock } from "../../../utils/actionLock";
+import { generateUUID } from "../helpers/uuid";
+import { AuthContext } from "../../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 // const STORAGE_KEY = "obra_sync_jornada_v1";
 const STORAGE_KEY = "atendimentos_v3";
@@ -81,7 +83,7 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
     } catch (err) { }
 
     return {
-      id: uuid(),
+      id: generateUUID(),
       // date: new Date().toLocaleDateString("pt-BR"),
       date: new Date().toISOString().split("T")[0],
       inicioExpediente: null,
@@ -96,8 +98,16 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
 
   const [jornada, setJornada] = useState(loadJornada);
   const [loadingEncerrar, setLoadingEncerrar] = useState(false);
+  const { logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
-  
+
+const handleLogout = () => {
+  if (window.confirm("Deseja encerrar a sessão?")) {
+    logout();
+    navigate("/login");
+  }
+};
 
   // Salvar jornada quando mudar
   useEffect(() => {
@@ -164,10 +174,10 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
 
     let gps = null;
     try {
-      gps = await getLocation();
+      gps = getLocation({ highAccuracy: true });
     } catch { }
 
-    const lunchLocalId = crypto.randomUUID();
+    const lunchLocalId = generateUUID();
 
     // 🔒 1️⃣ UI IMEDIATA
     setJornada((j) => ({
@@ -315,7 +325,7 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
 
     let gps = null;
     try {
-      gps = await getLocation();
+      gps = getLocation({ highAccuracy: true });
     } catch {
       console.warn("GPS indisponível ao finalizar almoço");
     }
@@ -392,7 +402,7 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
 
     let gps = null;
     try {
-      gps = await getLocation();
+      gps = getLocation({ highAccuracy: true });
     } catch { }
 
     const lunchId = jornada.activeLunchId;
@@ -474,108 +484,108 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
   // // ---- ENCERRAR EXPEDIENTE ----
 
   const encerrarExpediente = async () => {
-  if (loadingEncerrar) return;
+    if (loadingEncerrar) return;
 
-  const lockKey = "encerrar_jornada";
-  if (!acquireActionLock(lockKey)) {
-    console.warn("🚫 Encerramento já em andamento");
-    return;
-  }
-
-  setLoadingEncerrar(true);
-
-  try {
-    const journeyBackendId = getCurrentJourneyId();
-
-    if (!journeyBackendId) {
-      alert("Nenhuma jornada ativa para encerrar");
+    const lockKey = "encerrar_jornada";
+    if (!acquireActionLock(lockKey)) {
+      console.warn("🚫 Encerramento já em andamento");
       return;
     }
 
-    const fimExpediente = nowISO();
-    const assinatura = sigRef.current?.toDataURL() || null;
+    setLoadingEncerrar(true);
 
-    // 🔹 GPS best-effort
-    let gps = null;
     try {
-      gps = await getLocation();
-    } catch {}
+      const journeyBackendId = getCurrentJourneyId();
 
-    // 🔒 1️⃣ VERDADE LOCAL
-    const jornadaFinal = {
-      ...jornada,
-      fimExpediente,
-      gpsFimExpediente: gps,
-      assinatura,
-      status: "encerrada",
-      atividadeAtual: "encerrada",
-      sync_status: "pending",
-    };
+      if (!journeyBackendId) {
+        alert("Nenhuma jornada ativa para encerrar");
+        return;
+      }
 
-    salvarJornada(jornadaFinal);
+      const fimExpediente = nowISO();
+      const assinatura = sigRef.current?.toDataURL() || null;
 
-    // 🔹 2️⃣ BACKEND = SIDE-EFFECT
-    const payload = {
-      fimExpediente,
-      gpsFim: {
-        lat: gps?.lat ?? null,
-        lng: gps?.lng ?? null,
-      },
-      assinatura,
-    };
+      // 🔹 GPS best-effort
+      let gps = null;
+      try {
+        gps = getLocation({ highAccuracy: true });
+      } catch { }
 
-    finishJourney(journeyBackendId, payload)
-      .then(() => {
-        updateLocalJourney(journeyBackendId, {
-          sync_status: "synced",
-          synced_at: new Date().toISOString(),
+      // 🔒 1️⃣ VERDADE LOCAL
+      const jornadaFinal = {
+        ...jornada,
+        fimExpediente,
+        gpsFimExpediente: gps,
+        assinatura,
+        status: "encerrada",
+        atividadeAtual: "encerrada",
+        sync_status: "pending",
+      };
+
+      salvarJornada(jornadaFinal);
+
+      // 🔹 2️⃣ BACKEND = SIDE-EFFECT
+      const payload = {
+        fimExpediente,
+        gpsFim: {
+          lat: gps?.lat ?? null,
+          lng: gps?.lng ?? null,
+        },
+        assinatura,
+      };
+
+      finishJourney(journeyBackendId, payload)
+        .then(() => {
+          updateLocalJourney(journeyBackendId, {
+            sync_status: "synced",
+            synced_at: new Date().toISOString(),
+          });
+        })
+        .catch(() => {
+          queueRequest(
+            `/mobile-journeys/${journeyBackendId}/finish`,
+            "PATCH",
+            payload
+          );
         });
-      })
-      .catch(() => {
-        queueRequest(
-          `/mobile-journeys/${journeyBackendId}/finish`,
-          "PATCH",
-          payload
-        );
+
+      alert("Jornada encerrada com sucesso!");
+
+      // 🔥 3️⃣ RESET DA SESSÃO
+      clearDraftJornada();
+      clearCurrentJourneyId();
+
+      // 🔓 libera lock da jornada anterior
+      releaseActionLock("iniciar_jornada");
+
+      // 🔹 4️⃣ RESET UI
+      sigRef.current?.clear();
+      setSignatureEnabled(false);
+
+      setJornada({
+        id: generateUUID(),
+        date: new Date().toISOString().split("T")[0],
+        inicioExpediente: null,
+        fimExpediente: null,
+        gpsFimExpediente: null,
+        atendimentos: [],
+        almocos: [],
+        atividadeAtual: "livre",
+        atividadeAnterior: null,
+        baseLogs: [],
+        sync_status: "draft",
       });
 
-    alert("Jornada encerrada com sucesso!");
-
-    // 🔥 3️⃣ RESET DA SESSÃO
-    clearDraftJornada();
-    clearCurrentJourneyId();
-
-    // 🔓 libera lock da jornada anterior
-    releaseActionLock("iniciar_jornada");
-
-    // 🔹 4️⃣ RESET UI
-    sigRef.current?.clear();
-    setSignatureEnabled(false);
-
-    setJornada({
-      id: uuid(),
-      date: new Date().toISOString().split("T")[0],
-      inicioExpediente: null,
-      fimExpediente: null,
-      gpsFimExpediente: null,
-      atendimentos: [],
-      almocos: [],
-      atividadeAtual: "livre",
-      atividadeAnterior: null,
-      baseLogs: [],
-      sync_status: "draft",
-    });
-
-    setWizardStep(0);
-    setTab(0);
-  } catch (err) {
-    console.error("Erro ao encerrar expediente:", err);
-    alert("Erro ao encerrar jornada. Tente novamente.");
-  } finally {
-    setLoadingEncerrar(false);
-    releaseActionLock(lockKey); // 🔓 ÚNICO ponto de liberação
-  }
-};
+      setWizardStep(0);
+      setTab(0);
+    } catch (err) {
+      console.error("Erro ao encerrar expediente:", err);
+      alert("Erro ao encerrar jornada. Tente novamente.");
+    } finally {
+      setLoadingEncerrar(false);
+      releaseActionLock(lockKey); // 🔓 ÚNICO ponto de liberação
+    }
+  };
 
 
   const ultimoAlmoco =
@@ -595,7 +605,10 @@ const AttendanceWizardModal = ({ visible, onClose }) => {
             <Title>RDO - Jornada</Title>
             <Sub>{jornada.date}</Sub>
           </TitleWrap>
-          <CloseBtn onClick={onClose}>✕</CloseBtn>
+          <CloseBtn onClick={handleLogout} title="Sair">
+            <LogOut size={18} />
+          </CloseBtn>
+
         </Header>
 
         {jornada.inicioExpediente && (

@@ -35,6 +35,7 @@ import { queueRequest } from "../../../utils/offlineQueue";
 import mobileJourneyApi from "../../../services/mobileJourneyApi";
 import { compressImage } from "../../../utils/compressImage";
 import { acquireActionLock, releaseActionLock } from "../../../utils/actionLock";
+import { generateUUID } from "../helpers/uuid";
 
 const STORAGE_CURRENT = "wizard_current";
 
@@ -64,6 +65,11 @@ const createEmptyCurrent = () => ({
     estado: "",
     lat: null,
     lng: null,
+  },
+    rota: {
+    polyline: null,
+    distancia: null,
+    duracao: null,
   },
 });
 
@@ -105,6 +111,7 @@ export default function WizardController({
   const [loadingJornada, setLoadingJornada] = useState(false);
 const [loadingAtendimento, setLoadingAtendimento] = useState(false);
 
+console.log("UUID TEST:", generateUUID());
 
   // 🔹 Debounce para salvar no localStorage (sem fotos)
   const saveTimeoutRef = useRef(null);
@@ -233,7 +240,7 @@ const [loadingAtendimento, setLoadingAtendimento] = useState(false);
 
     let gps = null;
     try {
-      gps = await getLocation();
+      gps = getLocation({ highAccuracy: true });
     } catch {}
 
     const employeeId = user?.id;
@@ -307,13 +314,13 @@ const [loadingAtendimento, setLoadingAtendimento] = useState(false);
   // 🔹 GPS é best-effort
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao iniciar deslocamento");
   }
 
   // 🔥 ID SEMPRE LOCAL (offline-first)
-  const attendanceId = crypto.randomUUID();
+  const attendanceId = generateUUID();
 
   // 🔹 Atendimento nasce IMEDIATAMENTE na jornada
   const novoAtendimento = {
@@ -449,7 +456,7 @@ const iniciarAtendimento = async () => {
   // 🔹 GPS é best-effort (nunca bloqueia fluxo)
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao iniciar atendimento");
   }
@@ -555,7 +562,7 @@ const iniciarAtendimento = async () => {
   // 🔹 GPS é best-effort
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao finalizar atendimento");
   }
@@ -651,12 +658,12 @@ const iniciarAtendimento = async () => {
 
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao iniciar retorno para base");
   }
 
-  const baseLogLocalId = crypto.randomUUID();
+  const baseLogLocalId = generateUUID();
 
   // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
   setJornada((j) => ({
@@ -737,12 +744,12 @@ const marcarChegadaBase = async () => {
 
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao marcar chegada à base");
   }
 
-  const baseLogLocalId = crypto.randomUUID();
+  const baseLogLocalId = generateUUID();
 
   // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
   setJornada((j) => ({
@@ -812,12 +819,12 @@ const confirmarInterromperRetorno = async (motivo) => {
 
   let gps = null;
   try {
-    gps = await getLocation();
+    gps = getLocation({ highAccuracy: true });
   } catch {
     console.warn("GPS indisponível ao interromper retorno para base");
   }
 
-  const baseLogLocalId = crypto.randomUUID();
+  const baseLogLocalId = generateUUID();
 
   // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
   setJornada((j) => ({

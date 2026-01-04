@@ -7,9 +7,9 @@ export const Overlay = styled.div`
   background: rgba(2, 6, 23, 0.75);
   display: flex;
   justify-content: center;
-  align-items: flex-end;
+  align-items: flex-start;
   z-index: 1200;
-  padding: 12px;
+  padding: 2px;
 `;
 
 export const BigBtn = styled.button`
@@ -76,6 +76,20 @@ export const CloseBtn = styled.button`
   border: none;
   color: #e5f0ff;
   cursor: pointer;
+    transition: all 0.2s ease;
+      width: 36px;
+  height: 36px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+  }
 `;
 
 export const Progress = styled.div`

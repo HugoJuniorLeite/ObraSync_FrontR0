@@ -24,5 +24,7 @@ export const SignatureBox = styled.div`
   border-radius: 8px;
   padding: 8px;
   margin-top: 12px;
-`;
 
+  width: 100%;
+  overflow: hidden; /* 🔒 impede quebra horizontal */
+`;
