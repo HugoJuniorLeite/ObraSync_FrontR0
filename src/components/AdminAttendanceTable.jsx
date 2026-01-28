@@ -12,10 +12,16 @@ import {
 } from "../layouts/AttendanceTableStyles";
 
 export default function AdminAttendanceTable({ data }) {
-  const formatDate = (value) => {
-    if (!value) return "-";
-    return new Date(value).toLocaleDateString("pt-BR");
-  };
+  const formatOnlyDate = (value) => {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 
   const formatTime = (value) => {
     if (!value) return "-";
@@ -48,7 +54,7 @@ export default function AdminAttendanceTable({ data }) {
         <tbody>
           {data.map((item, index) => (
             <Tr key={index} index={index}>
-              <Td>{formatDate(item.date)}</Td>
+              <Td>{formatOnlyDate(item.date)}</Td>
 
               <Td>
                 <Technician>{item.technician}</Technician>
