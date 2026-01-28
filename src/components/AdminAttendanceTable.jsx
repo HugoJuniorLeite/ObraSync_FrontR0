@@ -29,7 +29,7 @@ export default function AdminAttendanceTable({ data }) {
     <TableWrapper>
       <StyledTable>
         <Thead>
-          <tr>
+          <Tr>
             <Th>Data</Th>
             <Th>Técnico</Th>
             <Th>OS</Th>
@@ -42,7 +42,7 @@ export default function AdminAttendanceTable({ data }) {
             <Th>Jornada</Th>
             <Th>Dist.</Th>
             <Th>Status</Th>
-          </tr>
+          </Tr>
         </Thead>
 
         <tbody>
