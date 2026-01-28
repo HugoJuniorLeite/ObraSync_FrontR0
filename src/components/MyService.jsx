@@ -3,7 +3,6 @@ import { useContext, useEffect, useState } from "react";
 import serviceOs from "../services/apiOs";
 import {
   Container,
-  Title,
   TableWrapper,
   Table,
   Thead,
@@ -25,12 +24,21 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BillSchema } from "../schemas/BillSchema";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FormContext } from "./RdoForms/FormContext";
 
+import {
+  Header,
+  TitleWrap,
+Title,
+Sub,
+CloseBtn,
+} from "./RdoForms/styles/layout";
+
 
 import { AuthContext } from "../contexts/AuthContext";
+import { LogOut } from "lucide-react";
 
 export default function MyService() {
 
@@ -141,9 +149,26 @@ export default function MyService() {
     console.log(bill)
   };
 
+   const handleLogout = () => {
+    if (window.confirm("Deseja encerrar a sessão?")) {
+      logout();
+      navigate("/login");
+    }
+  };
+
+
   return (
     <Container>
-      <Title>Minhas notas de Serviço</Title>
+
+      <Header>
+    <TitleWrap>
+            <Title>Minhas notas de Serviço</Title>
+          </TitleWrap>
+          <CloseBtn onClick={handleLogout} title="Sair">
+            <LogOut size={18} />
+          </CloseBtn>
+
+      </Header>
 
       <TableWrapper>
         <Table>

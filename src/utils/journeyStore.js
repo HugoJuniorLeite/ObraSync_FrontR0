@@ -119,6 +119,19 @@ export const clearCurrentJourneyId = () => {
 
 // utils/journeyStore.js
 
+// export const getAttendancePatchId = (jornada, attendanceId) => {
+//   if (!jornada || !attendanceId) return null;
+
+//   const atendimento = jornada.atendimentos?.find(
+//     (a) => a.id === attendanceId
+//   );
+
+//   if (!atendimento) return null;
+
+//   // 🔥 prioridade para backendId, fallback para local id
+//   return atendimento.backendId || atendimento.id;
+// };
+
 export const getAttendancePatchId = (jornada, attendanceId) => {
   if (!jornada || !attendanceId) return null;
 
@@ -128,9 +141,10 @@ export const getAttendancePatchId = (jornada, attendanceId) => {
 
   if (!atendimento) return null;
 
-  // 🔥 prioridade para backendId, fallback para local id
-  return atendimento.backendId || atendimento.id;
+  // 🔒 SOMENTE backendId
+  return atendimento.backendId ?? null;
 };
+
 
 export const getBaseLogPatchId = (jornada, baseLogId) => {
   if (!jornada || !baseLogId) return null;

@@ -98,19 +98,19 @@ export const menuItems = [
   {
     label: "RDO",
     icon: FaFolderOpen, // pasta principal
-    occupation: [9, 1, 7, 8, 2, 4, 5],
+    occupation: [9, 1, 7, 8, 2, 4, 5, 3],
     submenu: [
       {
         label: "Minhas Notas",
         path: "/rdo/minhas-notas",
         icon: FaClipboard, // item
-        occupation: [9, 1, 7, 8, 2, 4, 5],
+        occupation: [9, 1, 7, 8, 2, 4, 5, 3],
       },
          {
         label: "Gasista",
         path: "/rdo/gasista",
         icon: FaClipboard, // item
-        occupation: [9, 1, 7, 8, 2, 4, 5],
+        occupation: [9, 1, 7, 8, 2, 4, 5, 3],
       },
     ],
   },
@@ -208,7 +208,7 @@ export const menuItems = [
       {
         label: "Ordens",
         icon: FaClipboard,
-        occupation: [9, 4, 5, 3],
+        occupation: [9, 4, 5, 3, 2],
         submenu: [
           {
             label: "Criar nota",
@@ -220,13 +220,13 @@ export const menuItems = [
             label: "Programar",
             path: "/ordens/Despachar",
             icon: FaTasks, // ícone de envio/logística
-            occupation: [9, 4, 5, 3],
+            occupation: [9, 4, 5, 3, 2],
           },
           {
             label: "Acompanhar",
             path: "/ordens/Acompanhar",
             icon: FaChartLine, // ícone de visualização/monitoramento
-            occupation: [9, 4, 5, 3],
+            occupation: [9, 4, 5, 2],
           },
         ],
       },

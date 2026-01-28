@@ -9,11 +9,14 @@ export default function Step7_AtendimentoConcluido({
   BigBtn,
   current,
   fmt,
+  atendimento,
   onIniciarRetornoBase,
   startNewAtendimento,
   next,
   prev,
 }) {
+
+  console.log(atendimento, "ATENDIMENTOOOOOO")
   return (
     <motion.div
       key="s7"
@@ -27,19 +30,19 @@ export default function Step7_AtendimentoConcluido({
 
         <Card style={{ padding: 12, marginTop: 8 }}>
           <div style={{ color: "#9fb4c9", lineHeight: "20px" }}>
-            <div>Início: {fmt(current.atendimentoInicio)}</div>
-            <div>Fim: {fmt(current.finalizadoEm)}</div>
+            <div>Início: {fmt(atendimento?.atendimentoInicio)}</div>
+            <div>Fim: {fmt(atendimento?.finalizadoEm)}</div>
 
             <div style={{ marginTop: 6 }}>
               GPS Início:{" "}
-              {current.gpsInicio?.lat || "—"},{" "}
-              {current.gpsInicio?.lng || "—"}
+              {atendimento?.gpsInicio?.lat || "—"},{" "}
+              {atendimento?.gpsInicio?.lng || "—"}
             </div>
 
             <div>
               GPS Chegada:{" "}
-              {current.gpsChegada?.lat || "—"},{" "}
-              {current.gpsChegada?.lng || "—"}
+              {atendimento?.gpsChegada?.lat || "—"},{" "}
+              {atendimento?.gpsChegada?.lng || "—"}
             </div>
           </div>
         </Card>

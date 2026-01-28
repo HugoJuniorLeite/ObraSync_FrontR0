@@ -1,29 +1,30 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 import {
   FormWrapper,
   InputWraper,
   Logo,
   SubmitButton,
 } from "../layouts/Theme";
-
+import { Controller, useForm } from "react-hook-form";
 import { LoginSchema } from "../schemas/LoginSchema";
+import { useState, useContext } from "react";
 import { Input } from "../components/Ui/Input";
 import logo from "../assets/logo.png";
+import { useNavigate } from "react-router-dom";
 
 import { AuthContext } from "../contexts/AuthContext";
+import apiMobileJourney from "../services/apiMobileJourney";
+
 import { getHomeRouteByOccupation } from "../utils/redirectByRole";
+import { clearDraftJornada, saveDraftJornada } from "../utils/journeyStore";
 
 export default function Login() {
   const { handleLogin, firstLogin, changePassword } =
     useContext(AuthContext);
 
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("firstAccess");
+  const navigate = useNavigate();
 
   const {
     control,
@@ -34,50 +35,74 @@ export default function Login() {
     resolver: zodResolver(LoginSchema),
   });
 
+  // ---------------------------------------------
+  // SUBMIT
+  // ---------------------------------------------
   const onSubmit = async (data) => {
-    const cleanCpf = data.cpfNumber.replace(/\D/g, "");
+    const cpf = data.cpfNumber.replace(/\D/g, "");
     setLoading(true);
 
     try {
-      /* =======================
-         🔹 PRIMEIRO ACESSO
-      ======================= */
+      // ------------------------------------------------
+      // 1️⃣ PRIMEIRO ACESSO (VERIFICA CPF)
+      // ------------------------------------------------
       if (step === "firstAccess") {
-        const result = await firstLogin({ cpf: cleanCpf });
+        const result = await firstLogin({ cpf });
+
         alert(result.message);
 
-        setStep(result.response ? "login" : "changePassword");
+        if (result.response) {
+          setStep("login");
+        } else {
+          setStep("changePassword");
+        }
         return;
       }
 
-      /* =======================
-         🔐 LOGIN
-      ======================= */
+      // ------------------------------------------------
+      // 2️⃣ LOGIN
+      // ------------------------------------------------
       if (step === "login") {
-        const result = await handleLogin(cleanCpf, data.password);
+        const result = await handleLogin(cpf, data.password);
 
-        // ✅ FONTE ÚNICA DE VERDADE
-        const initialRoute = getHomeRouteByOccupation(
+        // 🔥 BUSCA JORNADA ATIVA (best effort)
+        let backendJornada = null;
+        try {
+          backendJornada =
+            await apiMobileJourney.getActiveJourney();
+            console.log(backendJornada, "backendJornada")
+
+        } catch {
+          // offline → ignora
+        }
+
+        if (backendJornada) {
+          saveDraftJornada(backendJornada);
+        } else {
+          clearDraftJornada();
+        }
+
+        // 🚀 REDIRECT FINAL
+        const route = getHomeRouteByOccupation(
           result.user.occupation
         );
-
-        // 🔥 replace evita voltar para rota errada após logout
-        navigate(initialRoute, { replace: true });
+        navigate(route);
         return;
       }
 
-      /* =======================
-         🔑 TROCA DE SENHA
-      ======================= */
+      // ------------------------------------------------
+      // 3️⃣ TROCA DE SENHA
+      // ------------------------------------------------
       if (step === "changePassword") {
         const response = await changePassword({
-          cpf: cleanCpf,
+          cpf,
           old_password: data.old_password,
           new_password: data.new_password,
         });
 
         alert(response.data?.message || "Senha criada com sucesso!");
         setStep("login");
+        return;
       }
     } catch (err) {
       console.error(err);
@@ -87,31 +112,44 @@ export default function Login() {
     }
   };
 
+  // ---------------------------------------------
+  // RENDER
+  // ---------------------------------------------
   return (
     <FormWrapper>
       <Logo src={logo} alt="logo" />
 
       <InputWraper>
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* CPF */}
           <Controller
-            name="cpfNumber"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                type="text"
-                label="CPF"
-                mask="000.000.000-00"
-                placeholder="000.000.000-00"
-                name="cpfNumber"
-                register={register}
-                error={errors.cpfNumber}
-              />
-            )}
-          />
+  name="cpfNumber"
+  control={control}
+  render={({ field }) => (
+    <Input
+      {...field}
+      type="text"
+      label="CPF"
+      mask="000.000.000-00"
+      placeholder="000.000.000-00"
+      name="cpfNumber"
+      error={errors.cpfNumber}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+        field.onChange(value);
+      }}
+      onPaste={(e) => {
+        e.preventDefault();
+        const pasted = e.clipboardData
+          .getData("text")
+          .replace(/\D/g, "");
 
-          {/* LOGIN */}
+        field.onChange(pasted);
+      }}
+    />
+  )}
+/>
+
+
           {step === "login" && (
             <Input
               type="password"
@@ -122,7 +160,6 @@ export default function Login() {
             />
           )}
 
-          {/* TROCA DE SENHA */}
           {step === "changePassword" && (
             <>
               <Input
@@ -132,7 +169,6 @@ export default function Login() {
                 register={register}
                 error={errors.old_password}
               />
-
               <Input
                 type="password"
                 label="Nova senha"
@@ -148,9 +184,9 @@ export default function Login() {
               ? "Carregando..."
               : step === "firstAccess"
               ? "Verificar Acesso"
-              : step === "login"
-              ? "Entrar"
-              : "Criar Senha"}
+              : step === "changePassword"
+              ? "Criar Senha"
+              : "Entrar"}
           </SubmitButton>
         </form>
       </InputWraper>

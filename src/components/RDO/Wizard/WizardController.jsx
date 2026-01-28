@@ -66,12 +66,15 @@ const createEmptyCurrent = () => ({
     lat: null,
     lng: null,
   },
-    rota: {
+  rota: {
     polyline: null,
     distancia: null,
     duracao: null,
   },
 });
+
+
+
 
 
 // 🔹 Carrega do localStorage mesclando com default (sem fotos)
@@ -104,17 +107,27 @@ export default function WizardController({
   step,
   setStep,
 }) {
+  const isAlmocoAtivo =
+    jornada?.atividadeAtual === "pausadoParaAlmoco";
+
   const { user } = useContext(AuthContext);  // ✅ AQUI é o local correto
   const [current, setCurrent] = useState(() => loadCurrent());
   const [interromperReasonText, setInterromperReasonText] = useState("");
 
   const [loadingJornada, setLoadingJornada] = useState(false);
-const [loadingAtendimento, setLoadingAtendimento] = useState(false);
+  const [loadingAtendimento, setLoadingAtendimento] = useState(false);
 
-console.log("UUID TEST:", generateUUID());
+  console.log("UUID TEST:", generateUUID());
 
   // 🔹 Debounce para salvar no localStorage (sem fotos)
   const saveTimeoutRef = useRef(null);
+
+
+  useEffect(() => {
+    if (jornada?.atividadeAtual === "atendimento") {
+      setCurrent(createEmptyCurrent());
+    }
+  }, [jornada?.atividadeAtual]);
 
   useEffect(() => {
     if (saveTimeoutRef.current) {
@@ -136,6 +149,10 @@ console.log("UUID TEST:", generateUUID());
       }
     };
   }, [current]);
+
+
+
+
 
   // -------------------------
   // EVENTOS DE ALMOÇO
@@ -214,305 +231,325 @@ console.log("UUID TEST:", generateUUID());
   // AÇÕES JORNADA (GPS em background)
   // -------------------------
   const iniciarJornada = async () => {
+    const lockKey = "iniciar_jornada";
 
-      if (loadingJornada) return;
+    // if (loadingJornada) return;
 
-  const lockKey = "iniciar_jornada";
-  if (!acquireActionLock(lockKey)) {
-    console.warn("🚫 Jornada já iniciada");
-    return;
-  }
-
-  // 🚨 REGRA DE NEGÓCIO (NUNCA USE LOCK AQUI)
-  const existingJourneyId = getCurrentJourneyId();
-  if (existingJourneyId) {
-    console.warn("🚫 Já existe jornada ativa");
-    releaseActionLock(lockKey);
-    return;
-  }
-
-  setLoadingJornada(true);
-
-  
-  try {
-    const inicio = nowISO();
-    const hoje = inicio.split("T")[0];
-
-    let gps = null;
-    try {
-      gps = getLocation({ highAccuracy: true });
-    } catch {}
-
-    const employeeId = user?.id;
-    if (!employeeId) {
-      alert("Erro: usuário não identificado.");
+    if (!acquireActionLock(lockKey)) {
+      console.warn("🚫 Jornada já iniciada");
       return;
     }
 
-    // 🔹 1️⃣ Backend
-    const created = await mobileJourneyApi.startJourney({
-      employeeId,
-      date: hoje,
-      inicioExpediente: inicio,
-      gpsInicio: gps ?? null,
-    });
-    
+    // 🚨 REGRA DE NEGÓCIO (NUNCA USE LOCK AQUI)
+    const existingJourneyId = getCurrentJourneyId();
+    if (existingJourneyId) {
+      console.warn("🚫 Já existe jornada ativa");
+      releaseActionLock(lockKey);
+      return;
+    }
 
-    // 🔹 2️⃣ Salva ID do backend
-    saveCurrentJourneyId(created.id);
+    setLoadingJornada(true);
 
-    // 🔥 3️⃣ CRIA DRAFT (FONTE DA VERDADE)
-    saveDraftJornada({
-      id: created.id,
-      employee_id: employeeId,
-      date: hoje,
-      inicioExpediente: inicio,
-      gpsInicioExpediente: gps ?? null,
 
-      atendimentos: [],
-      almocos: [],
-      baseLogs: [],
+    try {
+      const inicio = nowISO();
+      const hoje = inicio.split("T")[0];
 
-      atividadeAtual: "livre",
-      atividadeAnterior: null,
-      activeLunchId: null,
-    });
+      let gps = null;
+      try {
+        gps = getLocation({ highAccuracy: true });
+      } catch { }
 
-    // 🔹 4️⃣ Atualiza estado React
-    setJornada((p) => ({
-      ...p,
-      id: created.id,
-      employee_id: employeeId,
-      date: hoje,
-      inicioExpediente: inicio,
-      gpsInicioExpediente: gps ?? null,
-    }));
+      const employeeId = user?.id;
+      if (!employeeId) {
+        alert("Erro: usuário não identificado.");
+        return;
+      }
 
-    next();
-  } catch (err) {
-    console.error("Erro ao iniciar jornada:", err);
-        releaseActionLock(lockKey); // 🔓 só libera em erro
+      // 🔹 1️⃣ Backend
+      const created = await mobileJourneyApi.startJourney({
+        employeeId,
+        date: hoje,
+        inicioExpediente: inicio,
+        gpsInicio: gps ?? null,
+      });
 
-    alert("Falha ao iniciar a jornada. Verifique conexão.");
-  }
+
+      // 🔹 2️⃣ Salva ID do backend
+      saveCurrentJourneyId(created.id);
+
+      // 🔥 3️⃣ CRIA DRAFT (FONTE DA VERDADE)
+      saveDraftJornada({
+        id: created.id,
+        employee_id: employeeId,
+        date: hoje,
+        inicioExpediente: inicio,
+        gpsInicioExpediente: gps ?? null,
+
+        atendimentos: [],
+        almocos: [],
+        baseLogs: [],
+
+        atividadeAtual: "livre",
+        atividadeAnterior: null,
+        activeLunchId: null,
+      });
+
+      // 🔹 4️⃣ Atualiza estado React
+      setJornada((p) => ({
+        ...p,
+        id: created.id,
+        employee_id: employeeId,
+        date: hoje,
+        inicioExpediente: inicio,
+        gpsInicioExpediente: gps ?? null,
+      }));
+
+      next();
+    } catch (err) {
+      console.error("Erro ao iniciar jornada:", err);
+      releaseActionLock(lockKey); // 🔓 só libera em erro
+
+      alert("Falha ao iniciar a jornada. Verifique conexão.");
+    }
     finally {
-    setLoadingJornada(false);
-    releaseActionLock(lockKey); // 🔓 SEMPRE LIBERA
-  }
-};
-
-
-  const iniciarDeslocamento = async () => {
-  // 🔒 Hardening: não permitir dois atendimentos ativos
-  if (jornada.atendimentoAtivoId) {
-    console.warn("Já existe um atendimento ativo.");
-    return;
-  }
-
-  const deslocamentoInicio = nowISO();
-
-  // 🔹 GPS é best-effort
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao iniciar deslocamento");
-  }
-
-  // 🔥 ID SEMPRE LOCAL (offline-first)
-  const attendanceId = generateUUID();
-
-  // 🔹 Atendimento nasce IMEDIATAMENTE na jornada
-  const novoAtendimento = {
-    id: attendanceId,
-    backendId: null, // 🔥 será preenchido quando sincronizar
-
-    notaEnviada: current.notaEnviada,
-    ordemTipo: current.ordemTipo,
-    ordemNumero: current.ordemNumero,
-
-    endereco: {
-      cep: current.endereco.cep,
-      rua: current.endereco.rua,
-      numero: current.endereco.numero,
-      bairro: current.endereco.bairro,
-      cidade: current.endereco.cidade,
-      estado: current.endereco.estado,
-    },
-
-    deslocamentoInicio,
-    deslocamentoFim: null,
-
-    atendimentoInicio: null,
-    atendimentoFim: null,
-
-    gpsDeslocamentoInicio: gps ?? null,
-    gpsDeslocamentoFim: null,
-    gpsAtendimentoInicio: null,
-    gpsAtendimentoFim: null,
-
-    status: "deslocamento",
-
-    comentario: current.comentario ?? "",
-    notas: current.notas ?? "",
+      setLoadingJornada(false);
+      releaseActionLock(lockKey); // 🔓 SEMPRE LIBERA
+    }
   };
 
-  // 🔒 ESTADO LOCAL PRIMEIRO (fonte da verdade)
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "deslocamento",
-    atendimentoAtivoId: attendanceId,
-    atendimentos: [...(j.atendimentos || []), novoAtendimento],
-  }));
 
-  // 🔒 Persistência local imediata
-  localStorage.setItem(
-    "obsync_attendance_active",
-    attendanceId
-  );
+  //
+  //  INICIAR DESLOCAMENTO
+  //
 
-  // 🔹 Wizard / UI
-  setCurrent((c) => ({
-    ...c,
-    deslocamentoInicio,
-    gpsInicio: gps,
-  }));
+  const iniciarDeslocamento = async () => {
+    const lockKey = "iniciar_deslocamento";
 
-  // 🔹 Backend em background (best-effort)
-  const journeyBackendId = getCurrentJourneyId();
+    // 🔒 trava global (double click / reload / offline)
+    if (!acquireActionLock(lockKey)) {
+      console.warn("🚫 iniciarDeslocamento já em execução");
+      return;
+    }
 
-  if (journeyBackendId) {
-    const payload = {
-      tipo: current.tipo,
-      nota_enviada: current.notaEnviada === "sim",
-      ordem_tipo: current.ordemTipo,
-      ordem_numero: current.ordemNumero,
+    try {
+      // 🔒 regra de negócio
+      if (jornada.atendimentoAtivoId) {
+        console.warn("Já existe um atendimento ativo.");
+        return;
+      }
 
-      deslocamento_inicio: deslocamentoInicio,
-      gps_inicio: gps ?? null,
+      const deslocamentoInicio = nowISO();
 
-      cep: current.endereco.cep,
-      rua: current.endereco.rua,
-      numero: current.endereco.numero,
-      bairro: current.endereco.bairro,
-      cidade: current.endereco.cidade,
-      estado: current.endereco.estado,
+      // 🔹 GPS é best-effort
+      let gps = null;
+      try {
+        gps = await getLocation({ highAccuracy: true });
+      } catch {
+        console.warn("GPS indisponível ao iniciar deslocamento");
+      }
 
-      comentario: current.comentario ?? "",
-      notas: current.notas ?? "",
+      // 🔥 ID SEMPRE LOCAL (offline-first)
+      const attendanceId = generateUUID();
 
-      local_id: attendanceId, // 🔥 chave de reconciliação
-    };
+      // ✅ ORIGEM ÚNICA DO DESTINO
+      const destinoCoords = current.rota?.destino;
 
-    apiMobileJourney
-      .createAttendance(journeyBackendId, payload)
-      .then((resp) => {
-        if (!resp?.ok) return;
+      if (!destinoCoords) {
+        alert("Destino inválido. Recalcule a rota.");
+        return;
+      }
 
-        const backendId = resp.data.id;
+      // 🔹 Atendimento nasce IMEDIATAMENTE na jornada
+      const novoAtendimento = {
+        id: attendanceId,
+        backendId: null,
 
-        // 🔥 Reconciliação do ID sem alterar fluxo
-        setJornada((j) => ({
-          ...j,
-          atendimentos: j.atendimentos.map((a) =>
-            a.id === attendanceId
-              ? { ...a, backendId }
-              : a
-          ),
-        }));
-      })
-      .catch(() => {
-        queueRequest(
-          `/mobile-journeys/${journeyBackendId}/attendances`,
-          "POST",
-          payload
-        );
-      });
-  }
+        notaEnviada: current.notaEnviada,
+        ordemTipo: current.ordemTipo,
+        ordemNumero: current.ordemNumero,
 
-  // 🔹 Avança fluxo
-  next();
-};
+        endereco: {
+          cep: current.endereco.cep,
+          rua: current.endereco.rua,
+          numero: current.endereco.numero,
+          bairro: current.endereco.bairro,
+          cidade: current.endereco.cidade,
+          estado: current.endereco.estado,
+          lat: destinoCoords.lat,
+          lng: destinoCoords.lng,
+        },
 
+        rota: {
+          ...current.rota,
+        },
 
+        deslocamentoInicio,
+        deslocamentoFim: null,
 
+        atendimentoInicio: null,
+        atendimentoFim: null,
+
+        gpsDeslocamentoInicio: gps ?? null,
+        gpsDeslocamentoFim: null,
+        gpsAtendimentoInicio: null,
+        gpsAtendimentoFim: null,
+
+        status: "deslocamento",
+
+        comentario: current.comentario ?? "",
+        notas: current.notas ?? "",
+      };
+
+      // 🔒 ESTADO LOCAL PRIMEIRO (fonte da verdade)
+      setJornada((j) => ({
+        ...j,
+        atividadeAtual: "deslocamento",
+        atendimentoAtivoId: attendanceId,
+        atendimentos: [...(j.atendimentos || []), novoAtendimento],
+      }));
+
+      // 🔒 Persistência local imediata
+      localStorage.setItem("obsync_attendance_active", attendanceId);
+
+      // 🔹 Wizard / UI
+      setCurrent((c) => ({
+        ...c,
+        deslocamentoInicio,
+        gpsInicio: gps,
+      }));
+
+      // 🔹 Backend (side-effect)
+      const journeyBackendId = getCurrentJourneyId();
+
+      if (journeyBackendId) {
+        const payload = {
+          tipo: current.tipo,
+          nota_enviada: current.notaEnviada === "sim",
+          ordem_tipo: current.ordemTipo,
+          ordem_numero: current.ordemNumero,
+
+          deslocamento_inicio: deslocamentoInicio,
+          gps_inicio: gps ?? null,
+
+          cep: current.endereco.cep,
+          rua: current.endereco.rua,
+          numero: current.endereco.numero,
+          bairro: current.endereco.bairro,
+          cidade: current.endereco.cidade,
+          estado: current.endereco.estado,
+
+          comentario: current.comentario ?? "",
+          notas: current.notas ?? "",
+
+          local_id: attendanceId,
+        };
+
+        apiMobileJourney
+          .createAttendance(journeyBackendId, payload)
+          .then((resp) => {
+            if (!resp?.ok) return;
+
+            const backendId = resp.data.id;
+
+            setJornada((j) => ({
+              ...j,
+              atendimentos: j.atendimentos.map((a) =>
+                a.id === attendanceId
+                  ? { ...a, backendId }
+                  : a
+              ),
+            }));
+          })
+          .catch(() => {
+            queueRequest(
+              `/mobile-journeys/${journeyBackendId}/attendances`,
+              "POST",
+              payload
+            );
+          });
+      }
+
+      // 🔹 Avança fluxo (UMA ÚNICA VEZ)
+      next();
+    } finally {
+      // 🔓 libera SEMPRE (sucesso, erro ou return)
+      releaseActionLock(lockKey);
+    }
+  };
   //-----------------------------------------------------
   // INICIAR ATENDIMENTO
   //-----------------------------------------------------
+  const iniciarAtendimento = async () => {
+    const lockKey = "iniciar_atendimento";
 
-const iniciarAtendimento = async () => {
-  const inicio = nowISO();
+    // 🔒 proteção contra duplo clique
+    if (!acquireActionLock(lockKey)) {
+      console.warn("🚫 iniciarAtendimento já em execução");
+      return;
+    }
 
-  // 🔹 Recupera atendimento ativo (estado ou persistência)
-  const attendanceId =
-    jornada.atendimentoAtivoId ||
-    localStorage.getItem("obsync_attendance_active");
+    try {
+      const attendanceId = jornada.atendimentoAtivoId;
 
-  if (!attendanceId) {
-    alert("Erro: atendimento ativo não encontrado.");
-    return;
-  }
+      if (!attendanceId) {
+        console.error("Nenhum atendimento ativo para iniciar");
+        return;
+      }
 
-  // 🔹 GPS é best-effort (nunca bloqueia fluxo)
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao iniciar atendimento");
-  }
+      const inicio = nowISO();
 
-  // 🔹 Atualiza Wizard / UI
-  setCurrent((c) => ({
-    ...c,
-    atendimentoInicio: inicio,
-  }));
+      let gps = null;
+      try {
+        gps = await getLocation({ highAccuracy: true });
+      } catch { }
 
-  // 🔒 VERDADE DO RDO — transição de estado local
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "atendimento",
-    atendimentos: j.atendimentos.map((a) =>
-      a.id === attendanceId
-        ? {
-            ...a,
+      // 🔒 Atualiza atendimento EXISTENTE (fonte da verdade)
+      setJornada((j) => ({
+        ...j,
+        atividadeAtual: "atendimento",
+        atendimentos: j.atendimentos.map((a) =>
+          a.id === attendanceId
+            ? {
+              ...a,
+              atendimentoInicio: inicio,
+              gpsAtendimentoInicio: gps,
+              status: "em_atendimento",
+            }
+            : a
+        ),
+      }));
 
-            // fecha deslocamento
-            deslocamentoFim: inicio,
-            gpsDeslocamentoFim: gps ?? null,
+      const backendId = getAttendancePatchId(jornada, attendanceId);
 
-            // abre atendimento
-            atendimentoInicio: inicio,
-            gpsAtendimentoInicio: gps ?? null,
-
-            status: "em_atendimento",
-          }
-        : a
-    ),
-  }));
-
-  // 🔹 Backend = side-effect (usa backendId se existir)
-  const patchId = getAttendancePatchId(jornada, attendanceId);
-
-  if (patchId) {
-    const payload = {
-      atendimento_inicio: inicio,
-      gps_chegada: gps ?? null,
-    };
-
-    apiMobileJourney
-      .startService(patchId, payload)
-      .catch(() => {
+      if (!backendId) {
+        // 🔥 offline-first
         queueRequest(
-          `/mobile-attendances/${patchId}/start-service`,
+          `/mobile-attendances/local/${attendanceId}/start`,
           "PATCH",
-          payload
+          { inicio, gps }
         );
-      });
-  }
+        return;
+      }
 
-  // 🔹 Avança fluxo do wizard
-  next();
-};
+      // 🔹 backend = side-effect
+      apiMobileJourney
+        .startService(backendId, {
+          inicio,
+          gps_inicio: gps,
+        })
+        .catch(() => {
+          queueRequest(
+            `/mobile-attendances/${backendId}/start`,
+            "PATCH",
+            { inicio, gps }
+          );
+        });
+    } finally {
+      // 🔓 libera SEMPRE
+      releaseActionLock(lockKey);
+    }
+  };
 
 
   //-----------------------------------------------------
@@ -542,84 +579,94 @@ const iniciarAtendimento = async () => {
     }
   };
 
-  //-----------------------------------------------------
+
+  //---------//-----------------------------------------------------
   // FINALIZAR ATENDIMENTO
   //-----------------------------------------------------
-
   const finalizarAtendimento = async () => {
-  // 🔹 Recupera atendimento ativo (estado ou persistência)
-  const attendanceId =
-    jornada.atendimentoAtivoId ||
-    localStorage.getItem("obsync_attendance_active");
+    const lockKey = "finalizar_atendimento";
 
-  if (!attendanceId) {
-    alert("Atendimento não encontrado.");
-    return;
-  }
+    // 🔒 Proteção contra duplo clique / spam
+    if (!acquireActionLock(lockKey)) {
+      console.warn("🚫 finalizarAtendimento já em execução");
+      return;
+    }
 
-  const fim = nowISO();
+    try {
+      const attendanceId =
+        jornada.atendimentoAtivoId ||
+        localStorage.getItem("obsync_attendance_active");
 
-  // 🔹 GPS é best-effort
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao finalizar atendimento");
-  }
+      if (!attendanceId) {
+        alert("Atendimento não encontrado.");
+        return;
+      }
 
-  // 🔹 Wizard / UI
-  setCurrent((c) => ({
-    ...c,
-    finalizadoEm: fim,
-  }));
+      const fim = nowISO();
 
-  // 🔒 VERDADE DO RDO — consolidação do atendimento
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "livre",
-    atendimentoAtivoId: null,
-    atendimentos: j.atendimentos.map((a) =>
-      a.id === attendanceId
-        ? {
-            ...a,
-            atendimentoFim: fim,
-            gpsAtendimentoFim: gps ?? null,
-            status: "finalizado",
-            comentario: current.comentario ?? null,
-            fotos: current.fotos ?? [],
-          }
-        : a
-    ),
-  }));
+      let gps = null;
+      try {
+        gps = await getLocation({ highAccuracy: true });
+      } catch {
+        console.warn("GPS indisponível ao finalizar atendimento");
+      }
 
-  // 🔒 Limpa persistência local do atendimento ativo
-  localStorage.removeItem("obsync_attendance_active");
+      // 🔒 Consolidação da jornada (FONTE ÚNICA DA VERDADE)
+      setJornada((j) => ({
+        ...j,
+        atividadeAtual: "atendimentoFinalizado",
+        atividadeAnterior: "atendimento",
+        atendimentoAtivoId: null,
+        atendimentos: j.atendimentos.map((a) =>
+          a.id === attendanceId
+            ? {
+              ...a,
+              finalizadoEm: fim,
+              gpsFim: gps ?? null,
+              status: "finalizado",
+              comentario: current.comentario ?? null,
+              fotos: current.fotos ?? [],
+            }
+            : a
+        ),
+      }));
 
-  // 🔹 Backend = side-effect (usa backendId se existir)
-  const patchId = getAttendancePatchId(jornada, attendanceId);
+      localStorage.removeItem("obsync_attendance_active");
 
-  if (patchId) {
-    const payload = {
-      finalizado_em: fim,
-      comentario: current.comentario ?? null,
-      fotos: current.fotos ?? [],
-      gps_fim: gps ?? null,
-    };
+      // 🔹 Backend = side-effect (seguro)
+      const backendId = getAttendancePatchId(jornada, attendanceId);
 
-    apiMobileJourney
-      .finishService(patchId, payload)
-      .catch(() => {
+      const payload = {
+        finalizado_em: fim,
+        comentario: current.comentario ?? null,
+        fotos: current.fotos ?? [],
+        gps_fim: gps ?? null,
+      };
+
+      if (!backendId) {
+        // 🔥 Offline-first → fila
         queueRequest(
-          `/mobile-attendances/${patchId}/finish`,
+          `/mobile-attendances/local/${attendanceId}/finish`,
           "PATCH",
           payload
         );
-      });
-  }
+        return;
+      }
 
-  // 🔹 Avança fluxo do wizard
-  next();
-};
+      apiMobileJourney
+        .finishService(backendId, payload)
+        .catch(() => {
+          queueRequest(
+            `/mobile-attendances/${backendId}/finish`,
+            "PATCH",
+            payload
+          );
+        });
+    } finally {
+      // 🔓 Liberação garantida
+      releaseActionLock(lockKey);
+    }
+  };
 
 
 
@@ -654,72 +701,72 @@ const iniciarAtendimento = async () => {
 
 
   const onIniciarRetornoBase = async () => {
-  const time = nowISO();
+    const time = nowISO();
 
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao iniciar retorno para base");
-  }
+    let gps = null;
+    try {
+      gps = getLocation({ highAccuracy: true });
+    } catch {
+      console.warn("GPS indisponível ao iniciar retorno para base");
+    }
 
-  const baseLogLocalId = generateUUID();
+    const baseLogLocalId = generateUUID();
 
-  // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "retornoBase",
-    baseLogs: [
-      ...(j.baseLogs || []),
-      {
-        id: baseLogLocalId,
-        backendId: null,
-        tipo: "deslocamentoParaBase",
-        time,
-        gps,
-        finalizado: false,
-        sync_status: "pending",
-      },
-    ],
-  }));
+    // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
+    setJornada((j) => ({
+      ...j,
+      atividadeAtual: "retornoBase",
+      baseLogs: [
+        ...(j.baseLogs || []),
+        {
+          id: baseLogLocalId,
+          backendId: null,
+          tipo: "deslocamentoParaBase",
+          time,
+          gps,
+          finalizado: false,
+          sync_status: "pending",
+        },
+      ],
+    }));
 
-  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
-  const journeyBackendId = getCurrentJourneyId();
-  if (!journeyBackendId) return;
+    // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+    const journeyBackendId = getCurrentJourneyId();
+    if (!journeyBackendId) return;
 
-  const payload = {
-    tipo: "deslocamentoParaBase",
-    time,
-    lat: gps?.lat ?? null,
-    lng: gps?.lng ?? null,
-    local_id: baseLogLocalId, // 🔑 chave de reconciliação
+    const payload = {
+      tipo: "deslocamentoParaBase",
+      time,
+      lat: gps?.lat ?? null,
+      lng: gps?.lng ?? null,
+      local_id: baseLogLocalId, // 🔑 chave de reconciliação
+    };
+
+    mobileJourneyApi
+      .addBaseLog(journeyBackendId, payload)
+      .then((resp) => {
+        const backendId = resp?.id;
+        if (!backendId) return;
+
+        // 🔥 reconcilia backendId
+        setJornada((j) => ({
+          ...j,
+          baseLogs: j.baseLogs.map((b) =>
+            b.id === baseLogLocalId
+              ? { ...b, backendId, sync_status: "synced" }
+              : b
+          ),
+        }));
+      })
+      .catch(() => {
+        // 🔥 offline → fila
+        queueRequest(
+          `/mobile-journeys/${journeyBackendId}/base-logs`,
+          "POST",
+          payload
+        );
+      });
   };
-
-  mobileJourneyApi
-    .addBaseLog(journeyBackendId, payload)
-    .then((resp) => {
-      const backendId = resp?.id;
-      if (!backendId) return;
-
-      // 🔥 reconcilia backendId
-      setJornada((j) => ({
-        ...j,
-        baseLogs: j.baseLogs.map((b) =>
-          b.id === baseLogLocalId
-            ? { ...b, backendId, sync_status: "synced" }
-            : b
-        ),
-      }));
-    })
-    .catch(() => {
-      // 🔥 offline → fila
-      queueRequest(
-        `/mobile-journeys/${journeyBackendId}/base-logs`,
-        "POST",
-        payload
-      );
-    });
-};
 
 
   //------------------------------------
@@ -739,154 +786,154 @@ const iniciarAtendimento = async () => {
     setStep(goToStep);
   };
 
-const marcarChegadaBase = async () => {
-  const time = nowISO();
+  const marcarChegadaBase = async () => {
+    const time = nowISO();
 
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao marcar chegada à base");
-  }
+    let gps = null;
+    try {
+      gps = getLocation({ highAccuracy: true });
+    } catch {
+      console.warn("GPS indisponível ao marcar chegada à base");
+    }
 
-  const baseLogLocalId = generateUUID();
+    const baseLogLocalId = generateUUID();
 
-  // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "livre",
-    baseLogs: [
-      ...(j.baseLogs || []),
-      {
-        id: baseLogLocalId,
-        backendId: null,
-        tipo: "chegadaBase",
-        time,
-        gps,
-        sync_status: "pending",
-      },
-    ],
-  }));
+    // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
+    setJornada((j) => ({
+      ...j,
+      atividadeAtual: "livre",
+      baseLogs: [
+        ...(j.baseLogs || []),
+        {
+          id: baseLogLocalId,
+          backendId: null,
+          tipo: "chegadaBase",
+          time,
+          gps,
+          sync_status: "pending",
+        },
+      ],
+    }));
 
-  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
-  const journeyBackendId = getCurrentJourneyId();
-  if (!journeyBackendId) return;
+    // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+    const journeyBackendId = getCurrentJourneyId();
+    if (!journeyBackendId) return;
 
-  const payload = {
-    tipo: "chegadaBase",
-    time,
-    lat: gps?.lat ?? null,
-    lng: gps?.lng ?? null,
-    local_id: baseLogLocalId, // 🔑 reconciliação
+    const payload = {
+      tipo: "chegadaBase",
+      time,
+      lat: gps?.lat ?? null,
+      lng: gps?.lng ?? null,
+      local_id: baseLogLocalId, // 🔑 reconciliação
+    };
+
+    mobileJourneyApi
+      .addBaseLog(journeyBackendId, payload)
+      .then((resp) => {
+        const backendId = resp?.id;
+        if (!backendId) return;
+
+        // 🔥 reconcilia backendId
+        setJornada((j) => ({
+          ...j,
+          baseLogs: j.baseLogs.map((b) =>
+            b.id === baseLogLocalId
+              ? { ...b, backendId, sync_status: "synced" }
+              : b
+          ),
+        }));
+      })
+      .catch(() => {
+        // 🔥 offline → fila
+        queueRequest(
+          `/mobile-journeys/${journeyBackendId}/base-logs`,
+          "POST",
+          payload
+        );
+      });
+
+    window.dispatchEvent(
+      new CustomEvent("start-new-atendimento")
+    );
   };
-
-  mobileJourneyApi
-    .addBaseLog(journeyBackendId, payload)
-    .then((resp) => {
-      const backendId = resp?.id;
-      if (!backendId) return;
-
-      // 🔥 reconcilia backendId
-      setJornada((j) => ({
-        ...j,
-        baseLogs: j.baseLogs.map((b) =>
-          b.id === baseLogLocalId
-            ? { ...b, backendId, sync_status: "synced" }
-            : b
-        ),
-      }));
-    })
-    .catch(() => {
-      // 🔥 offline → fila
-      queueRequest(
-        `/mobile-journeys/${journeyBackendId}/base-logs`,
-        "POST",
-        payload
-      );
-    });
-
-  window.dispatchEvent(
-    new CustomEvent("start-new-atendimento")
-  );
-};
   //-------------------------------------------------------------
   // INTERROMPER DESLOCAMENTO PARA BASE
   //-------------------------------------------------------------
 
 
-const confirmarInterromperRetorno = async (motivo) => {
-  const time = nowISO();
+  const confirmarInterromperRetorno = async (motivo) => {
+    const time = nowISO();
 
-  let gps = null;
-  try {
-    gps = getLocation({ highAccuracy: true });
-  } catch {
-    console.warn("GPS indisponível ao interromper retorno para base");
-  }
+    let gps = null;
+    try {
+      gps = getLocation({ highAccuracy: true });
+    } catch {
+      console.warn("GPS indisponível ao interromper retorno para base");
+    }
 
-  const baseLogLocalId = generateUUID();
+    const baseLogLocalId = generateUUID();
 
-  // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
-  setJornada((j) => ({
-    ...j,
-    atividadeAtual: "livre",
-    baseLogs: [
-      ...(j.baseLogs || []),
-      {
-        id: baseLogLocalId,
-        backendId: null,
-        tipo: "retornoInterrompido",
-        time,
-        gps,
-        motivo,
-        sync_status: "pending",
-      },
-    ],
-  }));
+    // 🔒 1️⃣ ESTADO LOCAL PRIMEIRO
+    setJornada((j) => ({
+      ...j,
+      atividadeAtual: "livre",
+      baseLogs: [
+        ...(j.baseLogs || []),
+        {
+          id: baseLogLocalId,
+          backendId: null,
+          tipo: "retornoInterrompido",
+          time,
+          gps,
+          motivo,
+          sync_status: "pending",
+        },
+      ],
+    }));
 
-  // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
-  const journeyBackendId = getCurrentJourneyId();
-  if (!journeyBackendId) return;
+    // 🔥 2️⃣ BACKEND = SIDE-EFFECT (CRIAÇÃO)
+    const journeyBackendId = getCurrentJourneyId();
+    if (!journeyBackendId) return;
 
-  const payload = {
-    tipo: "retornoInterrompido",
-    time,
-    lat: gps?.lat ?? null,
-    lng: gps?.lng ?? null,
-    motivo,
-    local_id: baseLogLocalId, // 🔑 reconciliação
+    const payload = {
+      tipo: "retornoInterrompido",
+      time,
+      lat: gps?.lat ?? null,
+      lng: gps?.lng ?? null,
+      motivo,
+      local_id: baseLogLocalId, // 🔑 reconciliação
+    };
+
+    mobileJourneyApi
+      .addBaseLog(journeyBackendId, payload)
+      .then((resp) => {
+        const backendId = resp?.id;
+        if (!backendId) return;
+
+        // 🔥 reconcilia backendId
+        setJornada((j) => ({
+          ...j,
+          baseLogs: j.baseLogs.map((b) =>
+            b.id === baseLogLocalId
+              ? { ...b, backendId, sync_status: "synced" }
+              : b
+          ),
+        }));
+      })
+      .catch(() => {
+        // 🔥 offline → fila
+        queueRequest(
+          `/mobile-journeys/${journeyBackendId}/base-logs`,
+          "POST",
+          payload
+        );
+      });
+
+    // 🔹 3️⃣ Libera novo atendimento
+    window.dispatchEvent(
+      new CustomEvent("start-new-atendimento")
+    );
   };
-
-  mobileJourneyApi
-    .addBaseLog(journeyBackendId, payload)
-    .then((resp) => {
-      const backendId = resp?.id;
-      if (!backendId) return;
-
-      // 🔥 reconcilia backendId
-      setJornada((j) => ({
-        ...j,
-        baseLogs: j.baseLogs.map((b) =>
-          b.id === baseLogLocalId
-            ? { ...b, backendId, sync_status: "synced" }
-            : b
-        ),
-      }));
-    })
-    .catch(() => {
-      // 🔥 offline → fila
-      queueRequest(
-        `/mobile-journeys/${journeyBackendId}/base-logs`,
-        "POST",
-        payload
-      );
-    });
-
-  // 🔹 3️⃣ Libera novo atendimento
-  window.dispatchEvent(
-    new CustomEvent("start-new-atendimento")
-  );
-};
 
   const buscarCep = async (cep) => {
     cep = cep.replace(/\D/g, "");
@@ -911,6 +958,13 @@ const confirmarInterromperRetorno = async (motivo) => {
   const fmt = (iso) =>
     iso ? new Date(iso).toLocaleString("pt-BR") : "—";
 
+
+  const atendimentoAtual = jornada?.atendimentos?.slice(-1)[0];
+  const atendimentoEmDeslocamento = jornada?.atendimentos?.find(
+    (a) => a.id === jornada.atendimentoAtivoId
+  );
+
+
   // -------------------------
   // RENDERIZAÇÃO DOS STEPS
   // -------------------------
@@ -920,165 +974,183 @@ const confirmarInterromperRetorno = async (motivo) => {
         <div style={{ color: "#facc15", fontSize: 12, fontWeight: 600 }}>
           Novo Atendimento — Mobile (Híbrido)
         </div>
-        <div style={{ color: "#9fb4c9", fontSize: 12 }}>
-          Step {step}/9
-        </div>
+
+        {!isAlmocoAtivo ? (
+          <div style={{ color: "#9fb4c9", fontSize: 12 }}>
+            Step {step}/9
+          </div>
+        ) : (
+          <div
+            style={{
+              color: "#f87171",
+              fontSize: 12,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            ⏸ Em almoço
+          </div>
+        )}
       </div>
 
-      {step === 0 && (
-        <Step0_IniciarJornada
-          {...{ Field, Label, Card, BigBtn, iniciarJornada, loadingJornada }}
-        />
-      )}
 
-      {step === 1 && (
-        <Step1_Tipo
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            updateCurrentField,
-            next,
-          }}
-        />
-      )}
+      <>
+        {!isAlmocoAtivo && (
+          <>
+            {step === 0 && (
+              <Step0_IniciarJornada
+                {...{ Field, Label, Card, BigBtn, iniciarJornada, loadingJornada }}
+              />
+            )}
 
-      {step === 2 && (
-        <Step2_OS
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            Input,
-            Select,
-            current,
-            updateCurrentField,
-            next,
-            prev,
-          }}
-        />
-      )}
+            {step === 1 && (
+              <Step1_Tipo
+                {...{ Field, Label, Card, BigBtn, current, updateCurrentField, next }}
+              />
+            )}
 
-      {step === 3 && (
-        <Step3_Endereco
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            Input,
-            current,
-            updateCurrentField,
-            buscarCep,
-            next,
-            prev,
-          }}
-        />
-      )}
+            {step === 2 && (
+              <Step2_OS
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  Input,
+                  Select,
+                  current,
+                  updateCurrentField,
+                  next,
+                  prev,
+                }}
+              />
+            )}
 
-      {step === 4 && (
-        <Step4_DeslocamentoPrep
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            iniciarDeslocamento,
-            updateCurrentField,
-            next,
-            prev,
-          }}
-        />
-      )}
+            {step === 3 && (
+              <Step3_Endereco
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  Input,
+                  current,
+                  updateCurrentField,
+                  buscarCep,
+                  next,
+                  prev,
+                }}
+              />
+            )}
 
-      {step === 5 && (
-        <Step5_DeslocamentoAtivo
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            fmt,
-            distanciaAteBase,
-            iniciarAtendimento,
-            next,
-          }}
-        />
-      )}
+            {step === 4 && (
+              <Step4_DeslocamentoPrep
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  current,
+                  iniciarDeslocamento,
+                  updateCurrentField,
+                  next,
+                  prev,
+                }}
+              />
+            )}
 
-      {step === 6 && (
-        <Step6_AtendimentoAtivo
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            updateCurrentField,
-            finalizarAtendimento,
-            atualizarAtendimento,
-            next,
-            prev,
-            addFotos,
-          }}
-        />
-      )}
+            {step === 5 && (
+              <Step5_DeslocamentoAtivo
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  fmt,
+                  atendimento: atendimentoEmDeslocamento,
+                  distanciaAteBase,
+                  iniciarAtendimento,
+                  next,
+                }}
+              />
+            )}
 
-      {step === 7 && (
-        <Step7_AtendimentoConcluido
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            current,
-            fmt,
-            startNewAtendimento,
-            next,
-            prev,
-            onIniciarRetornoBase,
-          }}
-        />
-      )}
+            {step === 6 && (
+              <Step6_AtendimentoAtivo
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  current,
+                  updateCurrentField,
+                  finalizarAtendimento,
+                  atualizarAtendimento,
+                  next,
+                  prev,
+                  addFotos,
+                }}
+              />
+            )}
 
-      {step === 8 && (
-        <Step8_AposAtendimento
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            jornada,
-            fmt,
-            marcarChegadaBase,
-            distanciaAteBase,
-            abrirInterromperRetorno: () => setStep(9),
-            next,
-            startNewAtendimento,
-          }}
-        />
-      )}
+            {step === 7 && (
+              <Step7_AtendimentoConcluido
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  current,
+                  fmt,
+                  atendimento: atendimentoAtual,
+                  startNewAtendimento,
+                  next,
+                  prev,
+                  onIniciarRetornoBase,
+                }}
+              />
+            )}
 
-      {step === 9 && (
-        <Step9_Interromper
-          {...{
-            Field,
-            Label,
-            Card,
-            BigBtn,
-            interromperReasonText,
-            setInterromperReasonText,
-            confirmarInterromperRetorno,
-            updateCurrentField,
-            setStep,
-          }}
-        />
-      )}
+            {step === 8 && (
+              <Step8_AposAtendimento
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  jornada,
+                  fmt,
+                  marcarChegadaBase,
+                  distanciaAteBase,
+                  abrirInterromperRetorno: () => setStep(9),
+                  next,
+                  startNewAtendimento,
+                }}
+              />
+            )}
+
+            {step === 9 && (
+              <Step9_Interromper
+                {...{
+                  Field,
+                  Label,
+                  Card,
+                  BigBtn,
+                  interromperReasonText,
+                  setInterromperReasonText,
+                  confirmarInterromperRetorno,
+                  updateCurrentField,
+                  setStep,
+                }}
+              />
+            )}
+          </>
+        )}
+      </>
+
+
     </>
   );
 }

@@ -239,7 +239,10 @@ async function finishService(attendanceId, payload) {
 // }
 
 
-
+async function getActiveJourney() {
+  const res = await api.get("/mobile-journeys/active");
+  return res.data;
+}
 
 const apiMobileJourney = {
   createAttendance,
@@ -250,6 +253,7 @@ const apiMobileJourney = {
   // updateAttendance,
   finishService,
   startService,
+  getActiveJourney,
 };
 
 export default apiMobileJourney;

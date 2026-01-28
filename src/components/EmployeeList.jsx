@@ -13,8 +13,8 @@ import RegisterEmployeeModal from "./RegisterEmployeeModal";
 const Container = styled.div`
 background-color: #0e1a2a; 
 color: #f5f5f5; 
-min-height: 100vh; 
-width: 100vw; 
+min-height: 100%; 
+width: 100%; 
 padding: 1.5rem;
 `;
 

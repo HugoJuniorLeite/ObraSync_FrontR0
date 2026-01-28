@@ -16,7 +16,7 @@ export const Container = styled.div`
   background-color: ${colors.background};
   font-family: Arial, sans-serif;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   overflow: auto;
 `;
 

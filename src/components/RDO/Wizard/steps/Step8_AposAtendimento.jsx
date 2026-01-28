@@ -1,10 +1,11 @@
 
-
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
+import { calcularETA } from "../../helpers/eta";
+import { BASE_COORDS } from "../../helpers/distance";
 
-export default function  Step8_AposAtendimento({
+export default function Step8_AposAtendimento({
   Field,
   Label,
   Card,
@@ -18,10 +19,30 @@ export default function  Step8_AposAtendimento({
   current,
   distanciaAteBase
 }) {
+
+  const ultimoAtendimento =
+    jornada.atendimentos?.slice(-1)[0];
+
+  const origemRetorno = ultimoAtendimento?.gpsFim;
+
+
   const ultimoRetorno =
     jornada.baseLogs
       ?.filter(i => i.tipo === "deslocamentoParaBase" && !i.finalizado)
       ?.slice(-1)[0];
+
+
+  const etaBase = useMemo(() => {
+    if (
+      !origemRetorno ||
+      !Number.isFinite(origemRetorno.lat) ||
+      !Number.isFinite(origemRetorno.lng)
+    )
+      return null;
+
+    return calcularETA(origemRetorno, BASE_COORDS);
+  }, [origemRetorno]);
+
 
   return (
     <motion.div
@@ -58,7 +79,11 @@ export default function  Step8_AposAtendimento({
               <br />
 
               Distância estimada até a base:{" "}
-             {distanciaAteBase ? distanciaAteBase() : "—"}
+              <strong>
+                {etaBase
+                  ? (etaBase.distancia / 1000).toFixed(2) + " km"
+                  : "—"}
+              </strong>
 
             </div>
           </Card>

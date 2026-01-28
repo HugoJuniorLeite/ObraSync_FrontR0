@@ -202,6 +202,7 @@ import OccupationList from "../components/OccupationList";
 // Gasista
 import GasistaPage from "../pages/RDO/GasistaPage";
 import IndexRedirect from "./IndexRedirect";
+import AdminAttendances from "../pages/AdminAttendances";
 
 // Layout base
 const Main = styled.main`
@@ -250,19 +251,20 @@ export default function AppRoutes() {
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={[7, 8, 2, 4, 5]} />}>
-                  <Route path="/rdo/minhas-notas" element={<MyService />} />
-                  <Route path="/rdo-form/:id" element={<RdoFomrExtensionInative />} />
-                  <Route path="/rdo-croqui" element={<PrincipalPreVgb />} />
-                  <Route path="/pdf/:id" element={<RdoPdf />} />
+                  {/* <Route path="/rdo/minhas-notas" element={<MyService />} /> */}
+                  {/* <Route path="/rdo-form/:id" element={<RdoFomrExtensionInative />} /> */}
+                  {/* <Route path="/rdo-croqui" element={<PrincipalPreVgb />} /> */}
+                  {/* <Route path="/pdf/:id" element={<RdoPdf />} /> */}
                   <Route path="/requisicoes/materiais" element={<UnderConstruction featureName="Requisitar Materiais" />} />
                   <Route path="/requisicoes/epi" element={<UnderConstruction featureName="Requisitar EPI" />} />
                   <Route path="/checklist/arl" element={<UnderConstruction featureName="ARL" />} />
                   <Route path="/checklist/frota" element={<UnderConstruction featureName="Check-list Frota" />} />
                 </Route>
 
-                <Route element={<RoleRoute allowedRoles={[3, 2, 4, 5]} />}>
+                <Route element={<RoleRoute allowedRoles={[2]} />}>
                   <Route path="/notas" element={<CreateOs />} />
                   <Route path="/ordens/Despachar" element={<GetOss />} />
+                   <Route path="/ordens/Acompanhar" element={<AdminAttendances />} />
                 </Route>
 
                 <Route element={<RoleRoute allowedRoles={[6, 2, 4, 5]} />}>
@@ -279,6 +281,16 @@ export default function AppRoutes() {
                   <Route path="/rdo/gasista" element={<GasistaPage />} />
                 </Route>
               </Route>
+
+              <Route element={<RoleRoute allowedRoles={[3]} />}>
+                <Route element={<GasistaLayout />}>
+                  <Route path="/rdo/minhas-notas" element={<MyService />} />
+                  <Route path="/rdo-form/:id" element={<RdoFomrExtensionInative />} />
+                  <Route path="/rdo-croqui" element={<PrincipalPreVgb />} />
+                  <Route path="/pdf/:id" element={<RdoPdf />} />
+                </Route>
+              </Route>
+
 
             </Route>
 

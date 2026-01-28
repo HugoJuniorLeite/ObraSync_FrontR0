@@ -1,19 +1,22 @@
-// src/components/RDO/steps/Step5_DeslocamentoAtivo.jsx
-
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  useMap,
+} from "react-leaflet";
 import { decode } from "@here/flexpolyline";
+
 import { getLocation } from "../../helpers/location";
 import { snapToRoute } from "../../helpers/snapToRoute";
-import { calcularETA } from "../../helpers/eta";
+import { distanciaRestanteNaRota } from "../../helpers/distance";
 
-// import { snapToRoute } from "../../helpers/snapToRoute";
-// import { calcularETA } from "../../helpers/eta";
-
-// 🔁 Centraliza mapa conforme deslocamento
-// 🔁 Centraliza o mapa seguindo o técnico (SAFE)
+/* -------------------------------------------------------
+ * 🔁 Centraliza o mapa acompanhando o técnico
+ * ----------------------------------------------------- */
 function FollowMap({ center }) {
   const map = useMap();
 
@@ -32,58 +35,56 @@ function FollowMap({ center }) {
   return null;
 }
 
+/* -------------------------------------------------------
+ * STEP 5 — DESLOCAMENTO ATIVO
+ * ----------------------------------------------------- */
 export default function Step5_DeslocamentoAtivo({
   Field,
   Label,
   Card,
   BigBtn,
-  current,
+  atendimento,
   fmt,
   iniciarAtendimento,
 }) {
   const [gpsAtual, setGpsAtual] = useState(null);
   const [minutos, setMinutos] = useState(0);
 
-  const destino = current?.endereco;
-  console.log(destino, "destino")
-
-  // 🔹 Decodifica polyline HERE (BLINDADO)
+  /* ---------------------------------------------------
+   * 🔹 1) Decodifica a rota (FONTE DA VERDADE)
+   * ------------------------------------------------- */
   const rotaCoords = useMemo(() => {
-    const encoded = current?.rota?.polyline;
+    const encoded = atendimento?.rota?.polyline;
     if (!encoded) return null;
 
     try {
       const decoded = decode(encoded);
-
-      // ✅ FORMATO REAL QUE SEU LOG MOSTROU
-      if (!Array.isArray(decoded?.polyline)) {
-        console.warn("Formato inesperado de polyline:", decoded);
-        return null;
-      }
+      if (!Array.isArray(decoded?.polyline)) return null;
 
       return decoded.polyline
-        .map(([lat, lng]) => ({
-          lat,
-          lng,
-        }))
+        .map(([lat, lng]) => ({ lat, lng }))
         .filter(
           (p) =>
             Number.isFinite(p.lat) &&
             Number.isFinite(p.lng)
         );
-    } catch (e) {
-      console.error("Erro ao decodificar polyline HERE:", e);
+    } catch (err) {
+      console.error("Erro ao decodificar polyline:", err);
       return null;
     }
-  }, [current?.rota?.polyline]);
+  }, [atendimento?.rota?.polyline]);
 
+  /* ---------------------------------------------------
+   * 🔹 1.1) DESTINO REAL = último ponto da rota
+   * ------------------------------------------------- */
+  const destino = useMemo(() => {
+    if (!rotaCoords || rotaCoords.length === 0) return null;
+    return rotaCoords[rotaCoords.length - 1];
+  }, [rotaCoords]);
 
-
-
-  console.log("rotaCoords:", rotaCoords);
-
-
-  // 🔹 GPS do dispositivo (ZERO API)
+  /* ---------------------------------------------------
+   * 🔹 2) GPS do dispositivo (robusto / sem travar fluxo)
+   * ------------------------------------------------- */
   useEffect(() => {
     let ativo = true;
 
@@ -92,6 +93,7 @@ export default function Step5_DeslocamentoAtivo({
         highAccuracy: true,
         useCache: false,
       });
+
       if (
         ativo &&
         pos &&
@@ -100,7 +102,6 @@ export default function Step5_DeslocamentoAtivo({
       ) {
         setGpsAtual(pos);
       }
-      console.log(tick, "tick")
     };
 
     tick();
@@ -112,37 +113,58 @@ export default function Step5_DeslocamentoAtivo({
     };
   }, []);
 
-  // 🔹 Cronômetro de deslocamento
+  /* ---------------------------------------------------
+   * 🔹 3) Cronômetro de deslocamento
+   * ------------------------------------------------- */
   useEffect(() => {
-    if (!current?.deslocamentoInicio) return;
+    if (!atendimento?.deslocamentoInicio) return;
 
     const id = setInterval(() => {
-      const ini = new Date(current.deslocamentoInicio).getTime();
-      setMinutos(Math.floor((Date.now() - ini) / 60000));
+      const inicio = new Date(
+        atendimento.deslocamentoInicio
+      ).getTime();
+
+      setMinutos(
+        Math.floor((Date.now() - inicio) / 60000)
+      );
     }, 1000);
 
     return () => clearInterval(id);
-  }, [current?.deslocamentoInicio]);
+  }, [atendimento?.deslocamentoInicio]);
 
-  // 🔹 GPS visual (snap na rota – VISUAL ONLY)
+  /* ---------------------------------------------------
+   * 🔹 4) GPS VISUAL (snap apenas para UI)
+   * ------------------------------------------------- */
   const gpsVisual = useMemo(() => {
     if (!gpsAtual) return null;
     if (!rotaCoords) return gpsAtual;
     return snapToRoute(gpsAtual, rotaCoords);
   }, [gpsAtual, rotaCoords]);
 
-  // 🔹 ETA dinâmico (ZERO API)
-  const eta = useMemo(() => {
-    if (
-      !gpsVisual ||
-      !Number.isFinite(destino?.lat) ||
-      !Number.isFinite(destino?.lng)
-    )
-      return null;
+  /* ---------------------------------------------------
+   * 🔹 5) DISTÂNCIA RESTANTE REAL (na rota)
+   * ------------------------------------------------- */
+  const distanciaRestante = useMemo(() => {
+    if (!gpsAtual || !rotaCoords) return null;
+    return distanciaRestanteNaRota(gpsAtual, rotaCoords);
+  }, [gpsAtual, rotaCoords]);
 
-    return calcularETA(gpsVisual, destino);
-  }, [gpsVisual, destino]);
+  /* ---------------------------------------------------
+   * 🔹 6) ETA simples (30 km/h)
+   * ------------------------------------------------- */
+  const etaMin = useMemo(() => {
+    if (!distanciaRestante) return null;
 
+    const velocidadeMediaMps = 30_000 / 3600;
+    return Math.max(
+      1,
+      Math.round(distanciaRestante / velocidadeMediaMps / 60)
+    );
+  }, [distanciaRestante]);
+
+  /* ---------------------------------------------------
+   * 🔹 RENDER
+   * ------------------------------------------------- */
   return (
     <motion.div
       key="s5"
@@ -153,7 +175,7 @@ export default function Step5_DeslocamentoAtivo({
         <Label>Deslocamento ativo</Label>
 
         <div style={{ color: "#9fb4c9", marginBottom: 6 }}>
-          Iniciado em: {fmt(current.deslocamentoInicio)}
+          Iniciado em: {fmt(atendimento?.deslocamentoInicio)}
         </div>
 
         <Card style={{ marginBottom: 10 }}>
@@ -161,14 +183,25 @@ export default function Step5_DeslocamentoAtivo({
           <br />
           📍 Distância restante:{" "}
           <strong>
-            {eta ? (eta.distancia / 1000).toFixed(2) + " km" : "—"}
+            {distanciaRestante != null
+              ? (distanciaRestante / 1000).toFixed(2) + " km"
+              : "—"}
           </strong>
           <br />
-          ⏱️ ETA: <strong>{eta ? `${eta.minutos} min` : "—"}</strong>
+          ⏱️ ETA:{" "}
+          <strong>
+            {etaMin != null ? `${etaMin} min` : "—"}
+          </strong>
         </Card>
 
-        <div style={{ height: 260, borderRadius: 12, overflow: "hidden" }}>
-          {gpsVisual ? (
+        <div
+          style={{
+            height: 260,
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          {gpsVisual && destino ? (
             <MapContainer
               center={[gpsVisual.lat, gpsVisual.lng]}
               zoom={15}
@@ -181,17 +214,20 @@ export default function Step5_DeslocamentoAtivo({
               {/* Técnico */}
               <Marker position={[gpsVisual.lat, gpsVisual.lng]} />
 
-              {/* Destino */}
-              {Number.isFinite(destino?.lat) &&
-                Number.isFinite(destino?.lng) && (
-                  <Marker position={[destino.lat, destino.lng]} />
-                )}
+              {/* 📍 DESTINO REAL */}
+              <Marker position={[destino.lat, destino.lng]} />
 
-              {/* Rota HERE */}
+              {/* Rota */}
               {rotaCoords && (
                 <Polyline
-                  positions={rotaCoords.map((p) => [p.lat, p.lng])}
-                  pathOptions={{ color: "#2563eb", weight: 5 }}
+                  positions={rotaCoords.map((p) => [
+                    p.lat,
+                    p.lng,
+                  ])}
+                  pathOptions={{
+                    color: "#2563eb",
+                    weight: 5,
+                  }}
                 />
               )}
             </MapContainer>

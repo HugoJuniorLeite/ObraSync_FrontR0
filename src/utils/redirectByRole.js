@@ -5,7 +5,7 @@ export const HOME_BY_ROLE = {
   7: "/rdo/minhas-notas",
   8: "/rdo/minhas-notas",
   6: "/funcionarios",
-  3: "/notas",
+  3: "/rdo/minhas-notas",
   2: "/home",
   4: "/home",
   5: "/home",

@@ -45,6 +45,8 @@ import { acquireActionLock, releaseActionLock } from "../../../utils/actionLock"
 import { generateUUID } from "../helpers/uuid";
 import { AuthContext } from "../../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { resolveWizardStep } from "../../../utils/resolveWizardStep";
+import { loadJornada } from "../../../utils/jornada/loadJornada";
 
 // const STORAGE_KEY = "obra_sync_jornada_v1";
 const STORAGE_KEY = "atendimentos_v3";
@@ -58,56 +60,61 @@ const tabs = [
   { id: 3, label: "RDO", icon: FileText },
 ];
 
+
+
 const AttendanceWizardModal = ({ visible, onClose }) => {
   const panelState = usePanelState();
+  
+  
 
-  // -------------------------
-  // PERSISTÊNCIA DO STEP GLOBAL
-  // -------------------------
-  const [wizardStep, setWizardStep] = useState(() => {
-    const saved = localStorage.getItem("wizard_step");
-    return saved ? Number(saved) : 0;
-  });
-
-  useEffect(() => {
-    localStorage.setItem("wizard_step", wizardStep);
-  }, [wizardStep]);
-
-  // -------------------------
-  // CARREGA A JORNADA SALVA
-  // -------------------------
-  const loadJornada = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (err) { }
-
-    return {
-      id: generateUUID(),
-      // date: new Date().toLocaleDateString("pt-BR"),
-      date: new Date().toISOString().split("T")[0],
-      inicioExpediente: null,
-      fimExpediente: null,
-      atendimentos: [],
-      almocos: [],
-      atividadeAtual: "livre",
-      atividadeAnterior: null,
-      baseLogs: [],
-    };
-  };
 
   const [jornada, setJornada] = useState(loadJornada);
   const [loadingEncerrar, setLoadingEncerrar] = useState(false);
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  const sigRef = useRef(null);
+  const [signatureEnabled, setSignatureEnabled] = useState(false);
+  const [tab, setTab] = useState(0);
 
-const handleLogout = () => {
-  if (window.confirm("Deseja encerrar a sessão?")) {
-    logout();
-    navigate("/login");
-  }
-};
+  // -------------------------
+  // PERSISTÊNCIA DO STEP GLOBAL
+  // // -------------------------
+  // const [wizardStep, setWizardStep] = useState(() => {
+  //   const saved = localStorage.getItem("wizard_step");
+  //   return saved ? Number(saved) : 0;
+  // });
+
+  // useEffect(() => {
+  //   localStorage.setItem("wizard_step", wizardStep);
+  // }, [wizardStep]);
+
+
+    const [wizardStep, setWizardStep] = useState(0);
+
+  // 🔁 STEP DERIVADO DA JORNADA (fonte única de verdade)
+  useEffect(() => {
+
+    if(!jornada) return;
+    
+    const step = resolveWizardStep({
+      backendJornada: jornada,
+      localDraft: loadDraftJornada(),
+    });
+
+    setWizardStep(step);
+  }, [jornada]);
+
+ 
+
+
+
+  const handleLogout = () => {
+    if (window.confirm("Deseja encerrar a sessão?")) {
+      logout();
+      navigate("/login");
+    }
+  };
 
   // Salvar jornada quando mudar
   useEffect(() => {
@@ -118,9 +125,7 @@ const handleLogout = () => {
     }
   }, [jornada]);
 
-  const sigRef = useRef(null);
-  const [signatureEnabled, setSignatureEnabled] = useState(false);
-  const [tab, setTab] = useState(0);
+
 
   // ----------------------------------------
   // MODAIS DO ALMOÇO
@@ -629,6 +634,7 @@ const handleLogout = () => {
         <Body>
           {tab === 0 && (
             <WizardController
+              key={jornada.atendimentoAtivoId} // 🔥 chave muda → reseta tudo
               jornada={jornada}
               setJornada={setJornada}
               step={wizardStep}

@@ -57,7 +57,6 @@ const Label = styled.label`
 `;
 
 
-
 const compressImage = (file, maxWidth = 1024, quality = 0.7) =>
   new Promise((resolve) => {
     const img = new Image();

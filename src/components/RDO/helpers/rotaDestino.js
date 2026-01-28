@@ -1,5 +1,6 @@
 // src/components/RDO/helpers/rotaDestino.js
 
+import { decode } from "@here/flexpolyline";
 import { geocodeEndereco } from "./distanciaDestino";
 
 // import { geocodeEndereco } from "./geocode";
@@ -79,10 +80,12 @@ import { geocodeEndereco } from "./distanciaDestino";
 // import { geocodeEndereco } from "./calcularDestino";
 
 const HERE_KEY = "IGTISK_vgyRrHgYMnfGgZeAFGG8xPwoDfJOb_hYt70A"
+// src/components/RDO/helpers/rotaDestino.js
+
 
 export async function calcularRotaEndereco(endereco) {
   try {
-    // 🔹 1) GPS ATUAL (precisa ser user gesture)
+    // 🔹 1) GPS atual
     const origem = await new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (p) =>
@@ -95,15 +98,15 @@ export async function calcularRotaEndereco(endereco) {
       );
     });
 
-    // 🔹 2) DESTINO 
-    const destino = await geocodeEndereco(endereco);
-    if (!destino) return null;
+    // 🔹 2) Geocode apenas para achar a rua
+    const destinoGeo = await geocodeEndereco(endereco);
+    if (!destinoGeo) return null;
 
-    // 🔹 3) ROTEAMENTO HERE
+    // 🔹 3) Roteamento HERE
     const params = new URLSearchParams({
       transportMode: "car",
       origin: `${origem.lat},${origem.lng}`,
-      destination: `${destino.lat},${destino.lng}`,
+      destination: `${destinoGeo.lat},${destinoGeo.lng}`,
       return: "summary,polyline",
       apiKey: HERE_KEY,
     });
@@ -118,11 +121,27 @@ export async function calcularRotaEndereco(endereco) {
     const section = json.routes?.[0]?.sections?.[0];
     if (!section) return null;
 
+    // 🔹 4) Decode da rota
+    const decoded = decode(section.polyline);
+    const rotaCoords = decoded.polyline.map(([lat, lng]) => ({
+      lat,
+      lng,
+    }));
+
+    // 🔥 DESTINO REAL = FINAL DA ROTA
+    const destinoReal =
+      rotaCoords[rotaCoords.length - 1];
+
     return {
-      distancia: section.summary.length,   // metros
-      duracao: section.summary.duration,   // segundos
+      distancia: section.summary.length, // metros
+      duracao: section.summary.duration, // segundos
       polyline: section.polyline,
-      destino,
+
+      // 🔥 fonte da verdade
+      destino: destinoReal,
+
+      // opcional: auditoria
+      destinoGeocoded: destinoGeo,
     };
   } catch (e) {
     console.error("Erro calcularRotaEndereco HERE:", e);
