@@ -14,7 +14,7 @@ import {
 export default function AdminAttendanceTable({ data }) {
 
 
-  const formatOnlyDate = (value) => {
+  function formatOnlyDate (value) {
 
     console.log(value,"DATA")
   if (!value) return "-";
