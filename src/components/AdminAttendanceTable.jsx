@@ -12,6 +12,8 @@ import {
 } from "../layouts/AttendanceTableStyles";
 
 export default function AdminAttendanceTable({ data }) {
+
+
   const formatOnlyDate = (value) => {
 
     console.log(value,"DATA")
