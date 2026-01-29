@@ -13,6 +13,8 @@ import {
 
 export default function AdminAttendanceTable({ data }) {
   const formatOnlyDate = (value) => {
+
+    console.log(value,"DATA")
   if (!value) return "-";
 
   return new Date(value).toLocaleDateString("pt-BR", {
