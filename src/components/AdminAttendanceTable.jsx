@@ -58,7 +58,7 @@ export default function AdminAttendanceTable({ data }) {
         <tbody>
           {data.map((item, index) => (
             <Tr key={index} index={index}>
-              <Td>{formatOnlyDate(item.date)}</Td>
+              <Td>{formatOnlyDate(item.start)}</Td>
 
               <Td>
                 <Technician>{item.technician}</Technician>
